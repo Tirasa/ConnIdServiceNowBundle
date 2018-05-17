@@ -1,0 +1,21 @@
+language: java
+ 
+sudo: false
+cache:
+  directories:
+  - $HOME/.m2
+language: java
+jdk:
+  - openjdk7
+env:
+  global:
+    - SONATYPE_USERNAME=chicchiricco
+    - secure: "YkaFmi9WI1nlG9OTFntoh7JNwcfXUaxnE8bezQmchyVrAT6eaPvF7/EpakfqXpmScOed7xR4qVFPVuxFVmzhkuWbknjqCPDECUI7BKaiqRV/eDi9HsCwZPrLWkD1jQUn8rvgwL/zCcKRF+6snpWDKrMfaA+WnH+d2qi0OXmXiGQDo2zpWhh9TuqZeMUPDiY3iNZZxt4SOmmdVLy6lHqRclwwGgalbtOw6PTgFrolj6swleALGIisRjIrk1RTyc8xGqO25qQS8YxhXrGhqa13UuEuTQFMpXFEltmRNFCsgLRVvyPythka1P6OTcazQmPuvzR8Z57TXpCHV/sMFgKSdVWd2UcZRrmSkfV8I91DS0ZYaHKPoimIHZeauSOHzruigzbzoXII2sg4g+aqakWyUw9KeBW4Zk9vRZkS/q6KBAKDrA7qDJCtgbiJryWI35X0v6NCKn8/tgKFLNsDwyQXkjETQr76cYkfSgAZrbLptROj9rV97PV5umS3vYAdvH+cdC5g3r4zhAUCEH3w6C30HCV7LduqW4y2ePRVXLROGmdebRqyXvL1wfltrccubHZQiAote60pHpZSh7wPfOsp9GQSn21whWSnlaF32DGqjQJ+byTm/L6+XRfX+7oZhtJci+ewGvz/8axXVq1jS8eM87W89b+hMrRxkYO8vsRrkeM="
+
+after_success:
+  - python .travis.addServer.py
+  - mvn clean deploy --settings ~/.m2/mySettings.xml
+
+notifications:
+  email:
+    - connid-dev@googlegroups.com
