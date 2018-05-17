@@ -29,4 +29,4 @@ Available from [releases](https://github.com/Tirasa/ConnIdServiceNowBundle/relea
 ## Project information
 
  * [wiki](https://connid.atlassian.net/wiki/display/BASE/ServiceNow)
- * [issues](https://connid.atlassian.net/browse/AZURE)
+ * [issues](https://connid.atlassian.net/browse/SERVICENOW)
