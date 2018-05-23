@@ -1,11 +1,7 @@
 ConnIdServiceNowBundle
 ==============
 
-<<<<<<< abdbdf814c9bf69a6cdf48869230051910534c6a
 The ServiceNow bundle is part of the [ConnId](http://connid.tirasa.net) project.
-=======
-The Service Now bundle is part of the [ConnId](http://connid.tirasa.net) project.
->>>>>>> First commit
 
 <a href="https://travis-ci.org/Tirasa/ConnIdServiceNowBundle"><img src="https://api.travis-ci.org/Tirasa/ConnIdServiceNowBundle.png"/></a>
 <a href="#">
@@ -32,9 +28,5 @@ Available from [releases](https://github.com/Tirasa/ConnIdServiceNowBundle/relea
 
 ## Project information
 
-<<<<<<< abdbdf814c9bf69a6cdf48869230051910534c6a
  * [wiki](https://connid.atlassian.net/wiki/display/BASE/ServiceNow)
-=======
- * [wiki](https://connid.atlassian.net/wiki/display/BASE/SERVICENOW)
->>>>>>> First commit
  * [issues](https://connid.atlassian.net/browse/SERVICENOW)
