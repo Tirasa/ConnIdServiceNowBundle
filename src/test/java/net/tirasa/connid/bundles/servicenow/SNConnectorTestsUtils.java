@@ -16,6 +16,7 @@
 package net.tirasa.connid.bundles.servicenow;
 
 import java.util.Map;
+import net.tirasa.connid.bundles.servicenow.utils.SNUtils;
 import org.identityconnectors.common.logging.Log;
 
 public class SNConnectorTestsUtils {
@@ -60,7 +61,7 @@ public class SNConnectorTestsUtils {
                     connectorConfiguration.setBaseAddress(entry.getValue());
                     break;
                 case "auth.password":
-                    connectorConfiguration.setPassword(entry.getValue());
+                    connectorConfiguration.setPassword(SNUtils.createProtectedPassword(entry.getValue()));
                     break;
                 case "auth.username":
                     connectorConfiguration.setUsername(entry.getValue());

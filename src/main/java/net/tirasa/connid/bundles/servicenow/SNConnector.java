@@ -83,11 +83,7 @@ public class SNConnector implements
         this.configuration = (SNConnectorConfiguration) configuration;
         this.configuration.validate();
 
-        client = new SNClient(
-                this.configuration.getBaseAddress(),
-                this.configuration.getUsername(),
-                this.configuration.getPassword()
-        );
+        client = new SNClient(this.configuration);
 
         LOG.ok("Connector {0} successfully inited", getClass().getName());
     }

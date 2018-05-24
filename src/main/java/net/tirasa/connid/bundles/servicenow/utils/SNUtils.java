@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.identityconnectors.common.StringUtil;
 import org.identityconnectors.common.logging.Log;
+import org.identityconnectors.common.security.GuardedString;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
 
 public class SNUtils {
@@ -31,6 +32,11 @@ public class SNUtils {
     public final static ObjectMapper MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .setSerializationInclusion(JsonInclude.Include.NON_NULL); // can send "" values
+
+    public static GuardedString createProtectedPassword(final String password) {
+        GuardedString guardedString = new GuardedString(password.toCharArray());
+        return guardedString;
+    }
 
     public static void handleGeneralError(final String message) {
         LOG.error("General error : {0}", message);

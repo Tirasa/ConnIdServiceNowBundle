@@ -16,6 +16,8 @@
 package net.tirasa.connid.bundles.servicenow;
 
 import org.identityconnectors.common.StringUtil;
+import org.identityconnectors.common.security.GuardedString;
+import org.identityconnectors.common.security.SecurityUtil;
 import org.identityconnectors.framework.common.exceptions.ConfigurationException;
 import org.identityconnectors.framework.spi.AbstractConfiguration;
 import org.identityconnectors.framework.spi.ConfigurationProperty;
@@ -31,7 +33,7 @@ public class SNConnectorConfiguration extends AbstractConfiguration implements S
 
     private String username;
 
-    private String password;
+    private GuardedString password;
 
     private String baseAddress;
 
@@ -57,11 +59,11 @@ public class SNConnectorConfiguration extends AbstractConfiguration implements S
 
     @ConfigurationProperty(order = 3, displayMessageKey = "password.display",
             helpMessageKey = "password.help", required = true, confidential = true)
-    public String getPassword() {
+    public GuardedString getPassword() {
         return password;
     }
 
-    public void setPassword(final String password) {
+    public void setPassword(final GuardedString password) {
         this.password = password;
     }
 
@@ -73,7 +75,7 @@ public class SNConnectorConfiguration extends AbstractConfiguration implements S
         if (StringUtil.isBlank(username)) {
             failValidation("Username cannot be null or empty.");
         }
-        if (StringUtil.isBlank(password)) {
+        if (StringUtil.isBlank(SecurityUtil.decrypt(password))) {
             failValidation("Password Id cannot be null or empty.");
         }
     }

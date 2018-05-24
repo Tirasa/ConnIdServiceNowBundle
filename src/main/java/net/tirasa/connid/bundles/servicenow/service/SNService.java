@@ -22,22 +22,20 @@ import java.util.Map;
 import java.util.Map.Entry;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import net.tirasa.connid.bundles.servicenow.SNConnectorConfiguration;
 import net.tirasa.connid.bundles.servicenow.dto.Resource;
 import net.tirasa.connid.bundles.servicenow.utils.SNAttributes;
 import net.tirasa.connid.bundles.servicenow.utils.SNUtils;
 import org.apache.cxf.jaxrs.client.WebClient;
 import org.identityconnectors.common.StringUtil;
 import org.identityconnectors.common.logging.Log;
+import org.identityconnectors.common.security.SecurityUtil;
 
 public class SNService {
 
     private static final Log LOG = Log.getLog(SNService.class);
 
-    private final String baseAddress;
-
-    private final String username;
-
-    private final String password;
+    protected final SNConnectorConfiguration config;
 
     public final static String RESPONSE_RESULT = "result";
 
@@ -49,19 +47,15 @@ public class SNService {
 
     }
 
-    public SNService(final String baseAddress,
-            final String username,
-            final String password) {
-        this.baseAddress = baseAddress;
-        this.username = username;
-        this.password = password;
+    public SNService(final SNConnectorConfiguration config) {
+        this.config = config;
     }
 
     public WebClient getWebclient(final ResourceTable table, final Map<String, String> params) {
         WebClient webClient = WebClient
-                .create(baseAddress,
-                        username,
-                        password,
+                .create(config.getBaseAddress(),
+                        config.getUsername(),
+                        config.getPassword() == null ? null : SecurityUtil.decrypt(config.getPassword()),
                         null)
                 .accept(MediaType.APPLICATION_JSON)
                 .type(MediaType.APPLICATION_JSON)
@@ -84,7 +78,7 @@ public class SNService {
         try {
             Response response = webClient.get();
             checkServiceErrors(response);
-            
+
             result = SNUtils.MAPPER.readTree(response.readEntity(String.class));
             if (result.get(RESPONSE_RESULT).isArray()) {
                 final String totalCount = response.getHeaderString(RESPONSE_HEADER_TOTAL_COUNT);
@@ -108,7 +102,7 @@ public class SNService {
             String payload = SNUtils.MAPPER.writeValueAsString(resource);
             Response response = webClient.post(payload);
             checkServiceErrors(response);
-            
+
             String value = SNAttributes.RESOURCE_ATTRIBUTE_ID;
             String responseAsString = response.readEntity(String.class);
             JsonNode result = SNUtils.MAPPER.readTree(responseAsString);
@@ -133,7 +127,7 @@ public class SNService {
             String payload = SNUtils.MAPPER.writeValueAsString(resource);
             Response response = webClient.invoke("PATCH", payload);
             checkServiceErrors(response);
-            
+
             String responseAsString = response.readEntity(String.class);
             result = SNUtils.MAPPER.readTree(responseAsString);
             if (result.hasNonNull(RESPONSE_RESULT)) {

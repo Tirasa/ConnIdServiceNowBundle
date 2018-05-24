@@ -19,6 +19,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import net.tirasa.connid.bundles.servicenow.SNConnectorConfiguration;
 import net.tirasa.connid.bundles.servicenow.dto.PagedResults;
 import net.tirasa.connid.bundles.servicenow.dto.Resource;
 import net.tirasa.connid.bundles.servicenow.utils.SNUtils;
@@ -30,10 +31,8 @@ public class SNClient extends SNService {
 
     private static final Log LOG = Log.getLog(SNClient.class);
 
-    public SNClient(final String baseAddress,
-            final String username,
-            final String password) {
-        super(baseAddress, username, password);
+    public SNClient(final SNConnectorConfiguration config) {
+        super(config);
     }
 
     /**
