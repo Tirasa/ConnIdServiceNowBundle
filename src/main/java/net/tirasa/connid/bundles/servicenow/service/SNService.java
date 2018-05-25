@@ -72,7 +72,7 @@ public class SNService {
     }
 
     public JsonNode doGet(final WebClient webClient) {
-        LOG.ok("webClient current URL : {0}", webClient.getCurrentURI());
+        LOG.ok("GET: {0}", webClient.getCurrentURI());
         JsonNode result = null;
 
         try {
@@ -96,7 +96,7 @@ public class SNService {
     }
 
     protected void doCreate(final Resource resource, final WebClient webClient) {
-        LOG.ok("webClient current URL : {0}", webClient.getCurrentURI());
+        LOG.ok("CREATE: {0}", webClient.getCurrentURI());
 
         try {
             String payload = SNUtils.MAPPER.writeValueAsString(resource);
@@ -119,7 +119,7 @@ public class SNService {
     }
 
     protected JsonNode doUpdate(final Resource resource, final WebClient webClient) {
-        LOG.ok("webClient current URL : {0}", webClient.getCurrentURI());
+        LOG.ok("UPDATE: {0}", webClient.getCurrentURI());
         JsonNode result = null;
 
         WebClient.getConfig(webClient).getRequestContext().put("use.async.http.conduit", true);
@@ -144,7 +144,7 @@ public class SNService {
     }
 
     protected void doDelete(final String userId, final WebClient webClient) {
-        LOG.ok("webClient current URL : {0}", webClient.getCurrentURI());
+        LOG.ok("DELETE: {0}", webClient.getCurrentURI());
         int status = webClient.delete().getStatus();
         if (status != Response.Status.NO_CONTENT.getStatusCode() && status != Response.Status.OK.getStatusCode()) {
             throw new NoSuchEntityException(userId);

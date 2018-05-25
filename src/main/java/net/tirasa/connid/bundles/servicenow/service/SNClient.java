@@ -16,6 +16,7 @@
 package net.tirasa.connid.bundles.servicenow.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -162,8 +163,13 @@ public class SNClient extends SNService {
 
     private PagedResults<Resource> doGetResources(final WebClient webClient) {
         PagedResults<Resource> resources = null;
+        JsonNode node = doGet(webClient);
+        if (node == null) {
+            SNUtils.handleGeneralError("While retrieving Resources from service");
+        }
+        
         try {
-            resources = SNUtils.MAPPER.readValue(doGet(webClient).toString(),
+            resources = SNUtils.MAPPER.readValue(node.toString(),
                     new TypeReference<PagedResults<Resource>>() {
             });
         } catch (IOException ex) {
@@ -179,8 +185,13 @@ public class SNClient extends SNService {
 
     private Resource doGetResource(final WebClient webClient) {
         Resource resource = null;
+        JsonNode node = doGet(webClient);
+        if (node == null) {
+            SNUtils.handleGeneralError("While retrieving Resource from service");
+        }
+
         try {
-            resource = SNUtils.MAPPER.readValue(doGet(webClient).toString(),
+            resource = SNUtils.MAPPER.readValue(node.toString(),
                     Resource.class);
         } catch (IOException ex) {
             LOG.error(ex, "While converting from JSON to Resource");
@@ -199,9 +210,14 @@ public class SNClient extends SNService {
         }
 
         Resource updated = null;
+        JsonNode node = doUpdate(resource, getWebclient(type, null)
+                .path(resource.getSysId()));
+        if (node == null) {
+            SNUtils.handleGeneralError("While running update on service");
+        }
+
         try {
-            updated = SNUtils.MAPPER.readValue(doUpdate(resource, getWebclient(type, null)
-                    .path(resource.getSysId())).toString(),
+            updated = SNUtils.MAPPER.readValue(node.toString(),
                     Resource.class);
         } catch (IOException ex) {
             LOG.error(ex, "While converting from JSON to Resource");

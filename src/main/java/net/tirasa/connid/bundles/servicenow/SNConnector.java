@@ -176,7 +176,9 @@ public class SNConnector implements
                             PagedResults<Resource> pagedResult = client.getResources(type, 0, pagesSize, false);
                             resources = pagedResult.getResult();
 
-                            cookie = String.valueOf(resources.size());
+                            cookie = resources.size() >= pagesSize
+                                    ? String.valueOf(resources.size())
+                                    : null;
                         }
                     } else {
                         resources = client.getResources(type).getResult();
