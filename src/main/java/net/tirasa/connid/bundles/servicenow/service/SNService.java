@@ -97,9 +97,10 @@ public class SNService {
 
     protected void doCreate(final Resource resource, final WebClient webClient) {
         LOG.ok("CREATE: {0}", webClient.getCurrentURI());
+        String payload = null;
 
         try {
-            String payload = SNUtils.MAPPER.writeValueAsString(resource);
+            payload = SNUtils.MAPPER.writeValueAsString(resource);
             Response response = webClient.post(payload);
             checkServiceErrors(response);
 
@@ -110,10 +111,12 @@ public class SNService {
                     && result.get(RESPONSE_RESULT).hasNonNull(value)) {
                 resource.setSysId(result.get(RESPONSE_RESULT).get(value).textValue());
             } else {
+                LOG.error("CREATE payload {0}: ", payload);
                 SNUtils.handleGeneralError(
-                        "While getting " + value + " value for created Resource - Response : " + responseAsString);
+                        "While getting " + value + " value for created Resource - Response: " + responseAsString);
             }
         } catch (IOException ex) {
+            LOG.error("CREATE payload {0}: ", payload);
             SNUtils.handleGeneralError("While creating Resource", ex);
         }
     }
@@ -121,10 +124,11 @@ public class SNService {
     protected JsonNode doUpdate(final Resource resource, final WebClient webClient) {
         LOG.ok("UPDATE: {0}", webClient.getCurrentURI());
         JsonNode result = null;
+        String payload = null;
 
         WebClient.getConfig(webClient).getRequestContext().put("use.async.http.conduit", true);
         try {
-            String payload = SNUtils.MAPPER.writeValueAsString(resource);
+            payload = SNUtils.MAPPER.writeValueAsString(resource);
             Response response = webClient.invoke("PATCH", payload);
             checkServiceErrors(response);
 
@@ -133,10 +137,12 @@ public class SNService {
             if (result.hasNonNull(RESPONSE_RESULT)) {
                 result = result.get(RESPONSE_RESULT);
             } else {
+                LOG.error("UPDATE payload {0}: ", payload);
                 SNUtils.handleGeneralError(
-                        "While updating " + resource.getSysId() + " Resource - Response : " + responseAsString);
+                        "While updating " + resource.getSysId() + " Resource - Response: " + responseAsString);
             }
         } catch (IOException ex) {
+            LOG.error("UPDATE payload {0}: ", payload);
             SNUtils.handleGeneralError("While updating Resource", ex);
         }
 
@@ -163,8 +169,7 @@ public class SNService {
                 && response.getStatus() != Response.Status.ACCEPTED.getStatusCode()
                 && response.getStatus() != Response.Status.CREATED.getStatusCode()) {
             SNUtils.handleGeneralError("While executing request: " + responseAsString);
-        } else if (StringUtil.isNotBlank(responseAsString)
-                && (response.getMediaType() == MediaType.TEXT_HTML_TYPE || DetectHtml.isHtml(responseAsString))) {
+        } else if (response.getMediaType() == MediaType.TEXT_HTML_TYPE || DetectHtml.isHtml(responseAsString)) {
             SNUtils.handleGeneralError("While executing request - bad response from service: " + responseAsString);
         }
     }
