@@ -154,12 +154,18 @@ public class SNService {
     private void checkServiceErrors(final Response response) {
         if (response == null) {
             SNUtils.handleGeneralError("While executing request - no response");
-        } else if (response.getStatus() == Response.Status.NOT_FOUND.getStatusCode()) {
-            throw new NoSuchEntityException(response.readEntity(String.class));
+        }
+
+        String responseAsString = response.readEntity(String.class);
+        if (response.getStatus() == Response.Status.NOT_FOUND.getStatusCode()) {
+            throw new NoSuchEntityException(responseAsString);
         } else if (response.getStatus() != Response.Status.OK.getStatusCode()
                 && response.getStatus() != Response.Status.ACCEPTED.getStatusCode()
                 && response.getStatus() != Response.Status.CREATED.getStatusCode()) {
-            SNUtils.handleGeneralError("While executing request: " + response.readEntity(String.class));
+            SNUtils.handleGeneralError("While executing request: " + responseAsString);
+        } else if (StringUtil.isNotBlank(responseAsString)
+                && (response.getMediaType() == MediaType.TEXT_HTML_TYPE || DetectHtml.isHtml(responseAsString))) {
+            SNUtils.handleGeneralError("While executing request - bad response from service: " + responseAsString);
         }
     }
 
