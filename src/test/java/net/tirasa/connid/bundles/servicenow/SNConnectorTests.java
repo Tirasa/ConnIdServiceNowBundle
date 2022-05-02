@@ -15,13 +15,13 @@
  */
 package net.tirasa.connid.bundles.servicenow;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -60,8 +60,8 @@ import org.identityconnectors.framework.common.objects.Uid;
 import org.identityconnectors.framework.common.objects.filter.EqualsFilter;
 import org.identityconnectors.test.common.TestHelpers;
 import org.identityconnectors.test.common.ToListResultsHandler;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 public class SNConnectorTests {
 
@@ -75,7 +75,7 @@ public class SNConnectorTests {
 
     protected static ConnectorFacade connector;
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpConf() throws IOException {
         PROPS.load(SNConnectorTests.class.getResourceAsStream(
                 "/net/tirasa/connid/bundles/servicenow/auth.properties"));
@@ -346,13 +346,8 @@ public class SNConnectorTests {
         final List<ConnectorObject> found = new ArrayList<>();
         connector.search(ObjectClass.ACCOUNT,
                 new EqualsFilter(new Name(user.getUserName())),
-                new ResultsHandler() {
-
-            @Override
-            public boolean handle(final ConnectorObject obj) {
-                return found.add(obj);
-            }
-        }, new OperationOptionsBuilder().setAttributesToGet(SNAttributes.USER_ATTRIBUTE_USERNAME).build());
+                found::add,
+                new OperationOptionsBuilder().setAttributesToGet(SNAttributes.USER_ATTRIBUTE_USERNAME).build());
         assertEquals(found.size(), 1);
         assertNotNull(found.get(0));
         assertNotNull(found.get(0).getName());
@@ -364,13 +359,7 @@ public class SNConnectorTests {
     @Test
     public void pagedSearch() {
         final List<ConnectorObject> results = new ArrayList<>();
-        final ResultsHandler handler = new ResultsHandler() {
-
-            @Override
-            public boolean handle(final ConnectorObject co) {
-                return results.add(co);
-            }
-        };
+        final ResultsHandler handler = results::add;
 
         final OperationOptionsBuilder oob = new OperationOptionsBuilder();
         oob.setAttributesToGet(SNAttributes.USER_ATTRIBUTE_USERNAME);
@@ -543,5 +532,4 @@ public class SNConnectorTests {
         }
         return false;
     }
-
 }
