@@ -369,7 +369,7 @@ public class Resource implements BaseEntity {
     private String timeZone;
 
     @JsonProperty("schedule")
-    private String schedule;
+    private SNComplex schedule;
 
     @JsonProperty("date_format")
     private String dateFormat;
@@ -1301,11 +1301,11 @@ public class Resource implements BaseEntity {
         this.timeZone = timeZone;
     }
 
-    public String getSchedule() {
+    public SNComplex getSchedule() {
         return schedule;
     }
 
-    public void setSchedule(final String schedule) {
+    public void setSchedule(final SNComplex schedule) {
         this.schedule = schedule;
     }
 
@@ -1519,6 +1519,9 @@ public class Resource implements BaseEntity {
                             break;
                         case "default_perspective":
                             defaultPerspective = new SNComplex(String.class.cast(values.get(0)));
+                            break;
+                        case "schedule":
+                            schedule = new SNComplex(String.class.cast(values.get(0)));
                             break;
                         case "parent":
                             parent = new SNComplex(String.class.cast(values.get(0)));
