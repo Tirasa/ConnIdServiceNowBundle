@@ -28,7 +28,7 @@
     
   <groupId>net.tirasa.connid.bundles</groupId>
   <artifactId>net.tirasa.connid.bundles.servicenow</artifactId>
-  <version>1.0.2-SNAPSHOT</version>     
+  <version>1.0.3-SNAPSHOT</version>     
      
   <name>ConnId Bundles: Service Now</name>
   
