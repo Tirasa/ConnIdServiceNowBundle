@@ -188,7 +188,7 @@ public class SNConnector implements
                 }
 
                 for (Resource resource : resources) {
-                    handler.handle(fromResource(resource, attributesToGet));
+                    handler.handle(fromResource(resource, objectClass, attributesToGet));
                 }
 
                 if (handler instanceof SearchResultsHandler) {
@@ -221,7 +221,7 @@ public class SNConnector implements
                     }
                 }
                 if (result != null) {
-                    handler.handle(fromResource(result, attributesToGet));
+                    handler.handle(fromResource(result, objectClass, attributesToGet));
                 }
             }
         } else {
@@ -388,9 +388,12 @@ public class SNConnector implements
         return client;
     }
 
-    private ConnectorObject fromResource(final Resource resource, final Set<String> attributesToGet) {
+    private ConnectorObject fromResource(
+            final Resource resource,
+            final ObjectClass objectClass,
+            final Set<String> attributesToGet) {
         ConnectorObjectBuilder builder = new ConnectorObjectBuilder();
-        builder.setObjectClass(ObjectClass.ACCOUNT);
+        builder.setObjectClass(objectClass);
         builder.setUid(resource.getSysId());
         builder.setName(StringUtil.isBlank(resource.getUserName()) ? resource.getName() : resource.getUserName());
 
