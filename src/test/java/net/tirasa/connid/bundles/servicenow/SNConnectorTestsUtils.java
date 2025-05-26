@@ -24,6 +24,8 @@ public class SNConnectorTestsUtils {
     private static final Log LOG = Log.getLog(SNConnectorTestsUtils.class);
 
     public static final String USERNAME = "testuser_";
+    
+    public static final String GROUPNAME = "testgrp_";
 
     public static final String PASSWORD = "Password01";
 

@@ -35,6 +35,8 @@ public final class SNAttributes {
 
     public static final String USER_ATTRIBUTE_USERNAME = "user_name";
 
+    public static final String USER_ATTRIBUTE_MEMBEROF = "memberOf";
+    
     public static final String RESOURCE_ATTRIBUTE_NAME = "name";
 
     public static Schema buildSchema() {

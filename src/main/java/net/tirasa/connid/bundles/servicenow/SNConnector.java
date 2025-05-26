@@ -19,7 +19,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import javax.ws.rs.HttpMethod;
+import net.tirasa.connid.bundles.servicenow.dto.BatchOperation;
+import net.tirasa.connid.bundles.servicenow.dto.BatchRequest;
 import net.tirasa.connid.bundles.servicenow.dto.PagedResults;
 import net.tirasa.connid.bundles.servicenow.dto.Resource;
 import net.tirasa.connid.bundles.servicenow.service.SNClient;
@@ -32,6 +40,7 @@ import org.identityconnectors.common.security.GuardedString;
 import org.identityconnectors.common.security.SecurityUtil;
 import org.identityconnectors.framework.common.exceptions.InvalidAttributeValueException;
 import org.identityconnectors.framework.common.objects.Attribute;
+import org.identityconnectors.framework.common.objects.AttributeBuilder;
 import org.identityconnectors.framework.common.objects.AttributeUtil;
 import org.identityconnectors.framework.common.objects.AttributesAccessor;
 import org.identityconnectors.framework.common.objects.ConnectorObject;
@@ -277,6 +286,32 @@ public class SNConnector implements
             } catch (Exception e) {
                 SNUtils.wrapGeneralError("Could not create Resource : " + username, e);
             }
+            
+            // also manage memberships
+            BatchRequest batchRequest = new BatchRequest(UUID.randomUUID().toString());
+            AtomicInteger counter = new AtomicInteger(1);
+            Optional.ofNullable(AttributeUtil.find(SNAttributes.USER_ATTRIBUTE_MEMBEROF, createAttributes))
+                    .ifPresent(groupsAttr -> {
+                        groupsAttr.getValue().forEach(group -> {
+                            try {
+                                batchRequest.getRequests().add(new BatchOperation.Builder().id(
+                                                String.valueOf(counter.getAndIncrement()))
+                                        .url("/api/now/table/" + SNService.ResourceTable.sys_user_grmember.name())
+                                        .headers(List.of(Map.of("name","Content-Type", "value", "application/json")))
+                                        .method(HttpMethod.POST).body(Map.of("user", resource.getSysId(), "group",
+                                                                        group.toString())).build());
+                            } catch (Exception e) {
+                                SNUtils.wrapGeneralError("Could not create user-group memberships : " + username, e);
+                            }
+                        });
+                    });
+            if (!batchRequest.getRequests().isEmpty()) {
+                try {
+                    client.executeBatch(batchRequest);
+                } catch (Exception e) {
+                    SNUtils.wrapGeneralError("While executing batch to user-group memberships : " + username, e);
+                }
+            }
 
             return new Uid(resource.getSysId());
 
@@ -375,6 +410,50 @@ public class SNConnector implements
                         "Could not update Resource " + uid.getUidValue() + " from attributes ", e);
             }
 
+            // also manage memberships
+            BatchRequest batchRequest = new BatchRequest(UUID.randomUUID().toString());
+            AtomicInteger counter = new AtomicInteger(1);
+            
+            // 1. remove current memberships
+            client.getMembershipResources(SNService.ResourceTable.sys_user_grmember, "user=" + resource.getSysId())
+                    .getResult().forEach(memb -> {
+                        try {
+                            batchRequest.getRequests()
+                                    .add(new BatchOperation.Builder()
+                                            .id(String.valueOf(counter.getAndIncrement()))
+                                            .url("/api/now/table/" + SNService.ResourceTable.sys_user_grmember.name()
+                                                    + "/" + memb.getSysId())
+                                            .headers(List.of(Map.of("name","Content-Type", "value",
+                                                    "application/json")))
+                                            .method(HttpMethod.DELETE)
+                                            .build());
+                        } catch (Exception e) {
+                            SNUtils.wrapGeneralError("While deleting old user-group memberships : " + username, e);
+                        }
+                    });
+            // 2. add the new ones
+            Optional.ofNullable(AttributeUtil.find(SNAttributes.USER_ATTRIBUTE_MEMBEROF, replaceAttributes))
+                    .ifPresent(groupsAttr -> {
+                        groupsAttr.getValue().forEach(group -> {
+                            try {
+                                batchRequest.getRequests().add(new BatchOperation.Builder()
+                                        .id(String.valueOf(counter.getAndIncrement()))
+                                        .url("/api/now/table/" + SNService.ResourceTable.sys_user_grmember.name())
+                                        .headers(List.of(Map.of("name","Content-Type", "value", "application/json")))
+                                        .method(HttpMethod.POST)
+                                        .body(Map.of("user", resource.getSysId(), "group", group.toString()))
+                                        .build());
+                            } catch (Exception e) {
+                                SNUtils.wrapGeneralError(
+                                        "While creating user-group memberships on update: " + username, e);
+                            }
+                        });
+                    });
+
+            if (!batchRequest.getRequests().isEmpty()) {
+                client.executeBatch(batchRequest);
+            }
+            
             return returnUid;
 
         } else {
@@ -412,6 +491,16 @@ public class SNConnector implements
             LOG.error(ex, "While converting to attributes");
         }
 
+        // retrieve also memberships
+        if (ObjectClass.ACCOUNT.equals(objectClass) && attributesToGet.contains(
+                SNAttributes.USER_ATTRIBUTE_MEMBEROF)) {
+            builder.addAttribute(AttributeBuilder.build(SNAttributes.USER_ATTRIBUTE_MEMBEROF,
+                    client.getMembershipResources(SNService.ResourceTable.sys_user_grmember,
+                                    "user=" + resource.getSysId()).getResult().stream()
+                            .map(mr -> mr.getGroup().getValue())
+                            .collect(Collectors.toList())));
+        }
+        
         return builder.build();
     }
 

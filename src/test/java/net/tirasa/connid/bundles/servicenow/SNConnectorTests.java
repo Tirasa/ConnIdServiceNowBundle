@@ -77,8 +77,7 @@ public class SNConnectorTests {
 
     @BeforeAll
     public static void setUpConf() throws IOException {
-        PROPS.load(SNConnectorTests.class.getResourceAsStream(
-                "/net/tirasa/connid/bundles/servicenow/auth.properties"));
+        PROPS.load(SNConnectorTests.class.getResourceAsStream("auth.properties"));
 
         Map<String, String> configurationParameters = new HashMap<>();
         for (final String name : PROPS.stringPropertyNames()) {
@@ -245,16 +244,39 @@ public class SNConnectorTests {
 
         String testUser = null;
         String testGroup = null;
+        UUID uidGrp01 = UUID.randomUUID();
+        UUID uidGrp02 = UUID.randomUUID();
+        UUID uidGrp03 = UUID.randomUUID();
         UUID uid = UUID.randomUUID();
 
         try {
-            Uid created = createUser(uid);
+            // create group
+            Uid createdGroup01 = createGroup(uidGrp01);
+            Uid createdGroup02 = createGroup(uidGrp02);
+            Uid createdGroup03 = createGroup(uidGrp03);
+            
+            Uid created = createUser(uid, createdGroup01.getUidValue());
             testUser = created.getUidValue();
 
             Resource createdUser = readUser(testUser, client);
             assertEquals(createdUser.getSysId(), created.getUidValue());
 
-            Uid updated = updateUser(created);
+            // check memberships
+            final List<ConnectorObject> found = new ArrayList<>();
+            connector.search(ObjectClass.ACCOUNT,
+                    new EqualsFilter(new Uid(createdUser.getSysId())),
+                    found::add, new OperationOptionsBuilder().setAttributesToGet(SNAttributes.USER_ATTRIBUTE_USERNAME,
+                            SNAttributes.USER_ATTRIBUTE_MEMBEROF).build());
+            assertEquals(found.size(), 1);
+            assertNotNull(found.get(0));
+            assertNotNull(found.get(0).getName());
+            assertNotNull(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF));
+            assertNotNull(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF).getValue());
+            assertFalse(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF).getValue().isEmpty());
+            assertTrue(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF).getValue()
+                    .contains(createdGroup01.getUidValue()));
+
+            Uid updated = updateUser(created, createdGroup02.getUidValue(), createdGroup03.getUidValue());
 
             Resource updatedUser = readUser(updated.getUidValue(), client);
             LOG.info("Updated User: {0}", updatedUser);
@@ -263,6 +285,24 @@ public class SNConnectorTests {
             assertFalse(StringUtil.isBlank(updatedUser.getUserPassword()));
             assertTrue(StringUtil.isBlank(updatedUser.getCity()));
             assertEquals(updatedUser.getUserPassword(), SNConnectorTestsUtils.PASSWORD_UPDATE);
+
+            found.clear();
+            connector.search(ObjectClass.ACCOUNT,
+                    new EqualsFilter(new Uid(createdUser.getSysId())),
+                    found::add, new OperationOptionsBuilder().setAttributesToGet(SNAttributes.USER_ATTRIBUTE_USERNAME,
+                            SNAttributes.USER_ATTRIBUTE_MEMBEROF).build());
+            assertEquals(found.size(), 1);
+            assertNotNull(found.get(0));
+            assertNotNull(found.get(0).getName());
+            assertNotNull(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF));
+            assertNotNull(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF).getValue());
+            assertFalse(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF).getValue().isEmpty());
+            assertFalse(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF).getValue()
+                    .contains(createdGroup01.getUidValue()));
+            assertTrue(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF).getValue()
+                    .contains(createdGroup02.getUidValue()));
+            assertTrue(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF).getValue()
+                    .contains(createdGroup03.getUidValue()));
         } catch (Exception e) {
             LOG.error(e, "While running test");
             fail(e.getMessage());
@@ -271,7 +311,7 @@ public class SNConnectorTests {
         }
     }
 
-    private Uid createUser(final UUID uid) {
+    private Uid createUser(final UUID uid, final String... grpUids) {
         Attribute password = AttributeBuilder.buildPassword(
                 new GuardedString(SNConnectorTestsUtils.PASSWORD.toCharArray()));
 
@@ -286,6 +326,7 @@ public class SNConnectorTests {
                 SNConnectorTestsUtils.VALUE_MANAGER));
         userAttrs.add(AttributeBuilder.build(SNConnectorTestsUtils.RESOURCE_ATTRIBUTE_CITY,
                 SNConnectorTestsUtils.VALUE_CITY));
+        userAttrs.add(AttributeBuilder.build(SNAttributes.USER_ATTRIBUTE_MEMBEROF, grpUids));
         userAttrs.add(password);
 
         Uid created = connector.create(ObjectClass.ACCOUNT, userAttrs, new OperationOptionsBuilder().build());
@@ -296,7 +337,20 @@ public class SNConnectorTests {
         return created;
     }
 
-    private Uid updateUser(final Uid created) {
+    private Uid createGroup(final UUID uid) {
+        Set<Attribute> grpAttrs = new HashSet<>();
+        grpAttrs.add(AttributeBuilder.build(SNAttributes.RESOURCE_ATTRIBUTE_NAME,
+                SNConnectorTestsUtils.GROUPNAME + uid.toString()));
+
+        Uid created = connector.create(ObjectClass.GROUP, grpAttrs, new OperationOptionsBuilder().build());
+        assertNotNull(created);
+        assertFalse(created.getUidValue().isEmpty());
+        LOG.info("Created Group uid: {0}", created);
+
+        return created;
+    }
+
+    private Uid updateUser(final Uid created, final String... grpUids) {
         Attribute password = AttributeBuilder.buildPassword(
                 new GuardedString((SNConnectorTestsUtils.PASSWORD_UPDATE).toCharArray()));
         // UPDATE USER PASSWORD
@@ -310,6 +364,8 @@ public class SNConnectorTests {
         // want to clear an attribute
         userAttrs.add(AttributeBuilder.build(SNConnectorTestsUtils.RESOURCE_ATTRIBUTE_CITY,
                 ""));
+        // groups to replace
+        userAttrs.add(AttributeBuilder.build(SNAttributes.USER_ATTRIBUTE_MEMBEROF, grpUids));
 
         Uid updated = connector.update(
                 ObjectClass.ACCOUNT, created, userAttrs, new OperationOptionsBuilder().build());

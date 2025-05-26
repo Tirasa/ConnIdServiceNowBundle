@@ -1479,7 +1479,7 @@ public class Resource implements BaseEntity {
                 List<Object> values = attribute.getValue();
                 String localName = attribute.getName();
 
-                if (localName.contains("__")) {
+                if (localName.contains("__") || localName.equalsIgnoreCase(SNAttributes.USER_ATTRIBUTE_MEMBEROF)) {
                     LOG.ok("Skipping attribute {0}, while building Resource object", localName);
                     continue;
                 }
