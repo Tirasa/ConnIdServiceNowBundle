@@ -15,12 +15,14 @@
  */
 package net.tirasa.connid.bundles.servicenow.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import javax.ws.rs.core.Response;
 import net.tirasa.connid.bundles.servicenow.SNConnectorConfiguration;
+import net.tirasa.connid.bundles.servicenow.dto.BatchRequest;
+import net.tirasa.connid.bundles.servicenow.dto.MembershipResource;
 import net.tirasa.connid.bundles.servicenow.dto.PagedResults;
 import net.tirasa.connid.bundles.servicenow.dto.Resource;
 import net.tirasa.connid.bundles.servicenow.utils.SNUtils;
@@ -42,7 +44,7 @@ public class SNClient extends SNService {
      * @return List of Resources
      */
     public PagedResults<Resource> getResources(final ResourceTable type) {
-        return doGetResources(getWebclient(type, null));
+        return doGetResources(getTableWebClient(type, null), Resource.class);
     }
 
     /**
@@ -67,7 +69,7 @@ public class SNClient extends SNService {
         } else {
             params.put("rel", "next");
         }
-        return doGetResources(getWebclient(type, params));
+        return doGetResources(getTableWebClient(type, params), Resource.class);
     }
 
     /**
@@ -79,7 +81,19 @@ public class SNClient extends SNService {
     public PagedResults<Resource> getResources(final ResourceTable type, final String filterQuery) {
         Map<String, String> params = new HashMap<>();
         params.put("sysparm_query", filterQuery);
-        return doGetResources(getWebclient(type, params));
+        return doGetResources(getTableWebClient(type, params), Resource.class);
+    }
+
+    /**
+     *
+     * @param type
+     * @param filterQuery to filter results
+     * @return Filtered list of Resources
+     */
+    public PagedResults<MembershipResource> getMembershipResources(final ResourceTable type, final String filterQuery) {
+        Map<String, String> params = new HashMap<>();
+        params.put("sysparm_query", filterQuery);
+        return doGetResources(getTableWebClient(type, params), MembershipResource.class);
     }
 
     /**
@@ -91,11 +105,13 @@ public class SNClient extends SNService {
      * @param backward
      * @return Paged list of Resources
      */
-    public PagedResults<Resource> getResources(final ResourceTable type,
+    public PagedResults<Resource> getResources(
+            final ResourceTable type,
             final String filterQuery,
             final Integer startIndex,
             final Integer count,
             final Boolean backward) {
+
         Map<String, String> params = new HashMap<>();
         params.put("sysparm_query", filterQuery);
         params.put("sysparm_offset", String.valueOf(startIndex));
@@ -107,7 +123,7 @@ public class SNClient extends SNService {
         } else {
             params.put("rel", "next");
         }
-        return doGetResources(getWebclient(type, params));
+        return doGetResources(getTableWebClient(type, params), Resource.class);
     }
 
     /**
@@ -117,82 +133,14 @@ public class SNClient extends SNService {
      * @return Resource with resource id
      */
     public Resource getResource(final ResourceTable type, final String id) {
-        return doGetResource(getWebclient(type, null)
-                .path(id));
-    }
-
-    /**
-     *
-     * @param type
-     * @param resource
-     * @return Created Resource
-     */
-    public Resource createResource(final ResourceTable type, final Resource resource) {
-        return Resource.class.cast(doCreateResource(type, resource));
-    }
-
-    /**
-     *
-     * @param type
-     * @param resource
-     * @return Update Resource
-     */
-    public Resource updateResource(final ResourceTable type, final Resource resource) {
-        return Resource.class.cast(doUpdateResource(type, resource));
-    }
-
-    /**
-     *
-     * @param type
-     * @param id
-     */
-    public void deleteResource(final ResourceTable type, final String id) {
-        WebClient webClient = getWebclient(type, null)
-                .path(id);
-        doDeleteResource(id, webClient);
-    }
-
-    /**
-     *
-     *
-     * @return true if service status is OK, false otherwise
-     */
-    public boolean testService() {
-        return SNClient.this.getResources(ResourceTable.sys_user, 0, 1, false) != null;
-    }
-
-    private PagedResults<Resource> doGetResources(final WebClient webClient) {
-        PagedResults<Resource> resources = null;
-        JsonNode node = doGet(webClient);
-        if (node == null) {
-            SNUtils.handleGeneralError("While retrieving Resources from service");
-        }
-        
-        try {
-            resources = SNUtils.MAPPER.readValue(node.toString(),
-                    new TypeReference<PagedResults<Resource>>() {
-            });
-        } catch (IOException ex) {
-            LOG.error(ex, "While converting from JSON to Resources");
-        }
-
-        if (resources == null) {
-            SNUtils.handleGeneralError("While retrieving Resources from service");
-        }
-
-        return resources;
-    }
-
-    private Resource doGetResource(final WebClient webClient) {
         Resource resource = null;
-        JsonNode node = doGet(webClient);
+        JsonNode node = doGet(getTableWebClient(type, null).path(id));
         if (node == null) {
             SNUtils.handleGeneralError("While retrieving Resource from service");
         }
 
         try {
-            resource = SNUtils.MAPPER.readValue(node.toString(),
-                    Resource.class);
+            resource = SNUtils.MAPPER.readValue(node.toString(), Resource.class);
         } catch (IOException ex) {
             LOG.error(ex, "While converting from JSON to Resource");
         }
@@ -204,21 +152,36 @@ public class SNClient extends SNService {
         return resource;
     }
 
-    private Resource doUpdateResource(final ResourceTable type, final Resource resource) {
+    /**
+     *
+     * @param type
+     * @param resource
+     * @return Created Resource
+     */
+    public Resource createResource(final ResourceTable type, final Resource resource) {
+        doCreate(resource, getTableWebClient(type, null));
+        return resource;
+    }
+
+    /**
+     *
+     * @param type
+     * @param resource
+     * @return Update Resource
+     */
+    public Resource updateResource(final ResourceTable type, final Resource resource) {
         if (StringUtil.isBlank(resource.getSysId())) {
             SNUtils.handleGeneralError("Missing required Resource id attribute for update");
         }
 
         Resource updated = null;
-        JsonNode node = doUpdate(resource, getWebclient(type, null)
-                .path(resource.getSysId()));
+        JsonNode node = doUpdate(resource, getTableWebClient(type, null).path(resource.getSysId()));
         if (node == null) {
             SNUtils.handleGeneralError("While running update on service");
         }
 
         try {
-            updated = SNUtils.MAPPER.readValue(node.toString(),
-                    Resource.class);
+            updated = SNUtils.MAPPER.readValue(node.toString(), Resource.class);
         } catch (IOException ex) {
             LOG.error(ex, "While converting from JSON to Resource");
         }
@@ -230,13 +193,68 @@ public class SNClient extends SNService {
         return updated;
     }
 
-    private Resource doCreateResource(final ResourceTable type, final Resource resource) {
-        doCreate(resource, getWebclient(type, null));
-        return resource;
-    }
-
-    private void doDeleteResource(final String id, final WebClient webClient) {
+    /**
+     *
+     * @param type
+     * @param id
+     */
+    public void deleteResource(final ResourceTable type, final String id) {
+        WebClient webClient = getTableWebClient(type, null).path(id);
         doDelete(id, webClient);
     }
 
+    /**
+     *
+     *
+     * @return true if service status is OK, false otherwise
+     */
+    public boolean testService() {
+        return SNClient.this.getResources(ResourceTable.sys_user, 0, 1, false) != null;
+    }
+
+    public void executeBatch(final BatchRequest batchRequest) {
+        WebClient webClient = getOpWebClient(BATCH_OP, null);
+
+        LOG.ok("BATCH: {0}", webClient.getCurrentURI());
+        String payload = null;
+
+        try {
+            payload = SNUtils.MAPPER.writeValueAsString(batchRequest);
+            Response response = webClient.post(payload);
+            String responseAsString = checkServiceErrors(response);
+
+            JsonNode result = SNUtils.MAPPER.readTree(responseAsString);
+            if (result.hasNonNull(RESPONSE_BATCH_REQUEST_ID) && result.hasNonNull(RESPONSE_SERVICED_REQUESTS)) {
+                LOG.ok("Batch request successfully executed {0}: ", responseAsString);
+            } else {
+                LOG.error("Batch request error with payload {0}: ", payload);
+                SNUtils.handleGeneralError("While executing batch request - Response: " + responseAsString);
+            }
+        } catch (IOException ex) {
+            LOG.error("BATCH payload {0}: ", payload);
+            SNUtils.handleGeneralError("While creating Resource", ex);
+        }
+
+    }
+
+    private <T extends Resource> PagedResults<T> doGetResources(final WebClient webClient, Class<T> clazz) {
+        PagedResults<T> resources = null;
+        JsonNode node = doGet(webClient);
+        if (node == null) {
+            SNUtils.handleGeneralError("While retrieving Resources from service");
+        }
+
+        try {
+            resources = SNUtils.MAPPER.readValue(node.toString(),
+                    SNUtils.MAPPER.getTypeFactory().constructParametricType(PagedResults.class, clazz));
+        } catch (IOException ex) {
+            LOG.error(ex, "While converting from JSON to Resources");
+        }
+
+        if (resources == null) {
+            SNUtils.handleGeneralError("While retrieving Resources from service");
+        }
+
+        return resources;
+    }
 }

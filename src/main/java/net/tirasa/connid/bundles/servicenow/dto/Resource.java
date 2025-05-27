@@ -29,6 +29,7 @@ import net.tirasa.connid.bundles.servicenow.utils.SNUtils;
 import org.identityconnectors.common.CollectionUtil;
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.framework.common.objects.Attribute;
+import org.identityconnectors.framework.common.objects.PredefinedAttributes;
 
 public class Resource implements BaseEntity {
 

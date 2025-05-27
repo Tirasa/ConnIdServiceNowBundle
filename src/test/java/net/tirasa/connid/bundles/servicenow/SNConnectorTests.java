@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -38,6 +39,7 @@ import net.tirasa.connid.bundles.servicenow.service.NoSuchEntityException;
 import net.tirasa.connid.bundles.servicenow.service.SNClient;
 import net.tirasa.connid.bundles.servicenow.service.SNService;
 import net.tirasa.connid.bundles.servicenow.utils.SNAttributes;
+import net.tirasa.connid.bundles.servicenow.utils.SNUtils;
 import org.identityconnectors.common.StringUtil;
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.common.security.GuardedString;
@@ -47,11 +49,13 @@ import org.identityconnectors.framework.api.ConnectorFacadeFactory;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.common.objects.Attribute;
 import org.identityconnectors.framework.common.objects.AttributeBuilder;
+import org.identityconnectors.framework.common.objects.AttributeUtil;
 import org.identityconnectors.framework.common.objects.ConnectorObject;
 import org.identityconnectors.framework.common.objects.Name;
 import org.identityconnectors.framework.common.objects.ObjectClass;
 import org.identityconnectors.framework.common.objects.ObjectClassInfo;
 import org.identityconnectors.framework.common.objects.OperationOptionsBuilder;
+import org.identityconnectors.framework.common.objects.PredefinedAttributes;
 import org.identityconnectors.framework.common.objects.ResultsHandler;
 import org.identityconnectors.framework.common.objects.Schema;
 import org.identityconnectors.framework.common.objects.SearchResult;
@@ -67,26 +71,83 @@ public class SNConnectorTests {
 
     private static final Log LOG = Log.getLog(SNConnectorTests.class);
 
-    private final static Properties PROPS = new Properties();
+    private static final String USERNAME = "testuser_";
+
+    private static final String GROUPNAME = "testgrp_";
+
+    private static final String PASSWORD = "Password01";
+
+    private static final String PASSWORD_UPDATE = "Password0100";
+
+    private static final String VALUE_EMPLOYEE_NUMBER = "Employee number";
+
+    private static final String VALUE_EMPLOYEE_NUMBER_UPDATE = "Updated employee number";
+
+    private static final String VALUE_CITY = "Rome";
+
+    private static final String VALUE_COMMENT = "My comment";
+
+    private static final String VALUE_CITY_UPDATE = "Milan";
+
+    private static final String VALUE_LOCATION = "location value";
+
+    private static final String VALUE_MANAGER = "manager value";
+
+    private static final String RESOURCE_ATTRIBUTE_EMPLOYEE_NUMBER = "employee_number";
+
+    private static final String RESOURCE_ATTRIBUTE_LOCATION = "location";
+
+    private static final String RESOURCE_ATTRIBUTE_MANAGER = "manager";
+
+    private static final String RESOURCE_ATTRIBUTE_CITY = "city";
+
+    private static final Properties PROPS = new Properties();
 
     private static SNConnectorConfiguration CONF;
 
     private static SNConnector CONN;
 
-    protected static ConnectorFacade connector;
+    private static ConnectorFacade connector;
+
+    private static SNConnectorConfiguration buildConfiguration(Map<String, String> configuration) {
+        SNConnectorConfiguration connectorConfiguration = new SNConnectorConfiguration();
+
+        for (Map.Entry<String, String> entry : configuration.entrySet()) {
+
+            switch (entry.getKey()) {
+                case "auth.baseAddress":
+                    connectorConfiguration.setBaseAddress(entry.getValue());
+                    break;
+                case "auth.password":
+                    connectorConfiguration.setPassword(SNUtils.createProtectedPassword(entry.getValue()));
+                    break;
+                case "auth.username":
+                    connectorConfiguration.setUsername(entry.getValue());
+                    break;
+                default:
+                    LOG.warn("Occurrence of undefined parameter");
+                    break;
+            }
+        }
+        return connectorConfiguration;
+    }
+
+    private static boolean isConfigurationValid(final SNConnectorConfiguration connectorConfiguration) {
+        connectorConfiguration.validate();
+        return true;
+    }
 
     @BeforeAll
     public static void setUpConf() throws IOException {
-        PROPS.load(SNConnectorTests.class.getResourceAsStream(
-                "/net/tirasa/connid/bundles/servicenow/auth.properties"));
+        PROPS.load(SNConnectorTests.class.getResourceAsStream("auth.properties"));
 
         Map<String, String> configurationParameters = new HashMap<>();
         for (final String name : PROPS.stringPropertyNames()) {
             configurationParameters.put(name, PROPS.getProperty(name));
         }
-        CONF = SNConnectorTestsUtils.buildConfiguration(configurationParameters);
+        CONF = buildConfiguration(configurationParameters);
 
-        Boolean isValid = SNConnectorTestsUtils.isConfigurationValid(CONF);
+        Boolean isValid = isConfigurationValid(CONF);
         if (isValid) {
             CONN = new SNConnector();
             CONN.init(CONF);
@@ -114,7 +175,7 @@ public class SNConnectorTests {
         return factory.newInstance(impl);
     }
 
-    private SNClient newClient() {
+    private static SNClient newClient() {
         return CONN.getClient();
     }
 
@@ -171,11 +232,12 @@ public class SNConnectorTests {
         assertEquals(-1, result.getRemainingPagedResults());
     }
 
-    private void cleanup(
+    private static void cleanup(
             final ConnectorFacade connector,
             final SNClient client,
             final String testUserUid,
             final String testGroupUid) {
+
         if (testUserUid != null) {
             connector.delete(ObjectClass.ACCOUNT, new Uid(testUserUid), new OperationOptionsBuilder().build());
             try {
@@ -245,24 +307,66 @@ public class SNConnectorTests {
 
         String testUser = null;
         String testGroup = null;
+        UUID uidGrp01 = UUID.randomUUID();
+        UUID uidGrp02 = UUID.randomUUID();
+        UUID uidGrp03 = UUID.randomUUID();
         UUID uid = UUID.randomUUID();
 
         try {
-            Uid created = createUser(uid);
+            // create group
+            Uid createdGroup01 = createGroup(uidGrp01);
+            Uid createdGroup02 = createGroup(uidGrp02);
+            Uid createdGroup03 = createGroup(uidGrp03);
+
+            Uid created = createUser(uid, createdGroup01.getUidValue());
             testUser = created.getUidValue();
 
             Resource createdUser = readUser(testUser, client);
             assertEquals(createdUser.getSysId(), created.getUidValue());
 
-            Uid updated = updateUser(created);
+            // check memberships
+            List<ConnectorObject> found = new ArrayList<>();
+            connector.search(ObjectClass.ACCOUNT,
+                    new EqualsFilter(new Uid(createdUser.getSysId())),
+                    found::add, new OperationOptionsBuilder().setAttributesToGet(
+                            SNAttributes.USER_ATTRIBUTE_USERNAME,
+                            PredefinedAttributes.GROUPS_NAME).build());
+            assertEquals(found.size(), 1);
+            assertNotNull(found.get(0));
+            assertNotNull(found.get(0).getName());
+            assertNotNull(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME));
+            assertNotNull(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME).getValue());
+            assertFalse(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME).getValue().isEmpty());
+            assertTrue(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME).getValue()
+                    .contains(createdGroup01.getUidValue()));
+
+            Uid updated = updateUser(created, createdGroup02.getUidValue(), createdGroup03.getUidValue());
 
             Resource updatedUser = readUser(updated.getUidValue(), client);
             LOG.info("Updated User: {0}", updatedUser);
             assertNotNull(updatedUser.getUserPassword()); // password returned in clear text
-            assertEquals(updatedUser.getEmployeeNumber(), SNConnectorTestsUtils.VALUE_EMPLOYEE_NUMBER_UPDATE);
+            assertEquals(updatedUser.getEmployeeNumber(), VALUE_EMPLOYEE_NUMBER_UPDATE);
             assertFalse(StringUtil.isBlank(updatedUser.getUserPassword()));
             assertTrue(StringUtil.isBlank(updatedUser.getCity()));
-            assertEquals(updatedUser.getUserPassword(), SNConnectorTestsUtils.PASSWORD_UPDATE);
+            assertEquals(updatedUser.getUserPassword(), PASSWORD_UPDATE);
+
+            found.clear();
+            connector.search(ObjectClass.ACCOUNT,
+                    new EqualsFilter(new Uid(createdUser.getSysId())),
+                    found::add, new OperationOptionsBuilder().setAttributesToGet(SNAttributes.USER_ATTRIBUTE_USERNAME,
+                            PredefinedAttributes.GROUPS_NAME).build());
+            assertEquals(found.size(), 1);
+            assertNotNull(found.get(0));
+            assertNotNull(found.get(0).getName());
+            assertNotNull(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME));
+            assertNotNull(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME).getValue());
+            assertFalse(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME).getValue().isEmpty());
+            assertFalse(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME).getValue()
+                    .contains(createdGroup01.getUidValue()));
+            assertTrue(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME).getValue()
+                    .contains(createdGroup02.getUidValue()));
+            assertTrue(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME).getValue()
+                    .contains(createdGroup03.getUidValue()));
         } catch (Exception e) {
             LOG.error(e, "While running test");
             fail(e.getMessage());
@@ -271,21 +375,16 @@ public class SNConnectorTests {
         }
     }
 
-    private Uid createUser(final UUID uid) {
-        Attribute password = AttributeBuilder.buildPassword(
-                new GuardedString(SNConnectorTestsUtils.PASSWORD.toCharArray()));
+    private static Uid createUser(final UUID uid, final String... grpUids) {
+        Attribute password = AttributeBuilder.buildPassword(new GuardedString(PASSWORD.toCharArray()));
 
         Set<Attribute> userAttrs = new HashSet<>();
-        userAttrs.add(AttributeBuilder.build(SNAttributes.USER_ATTRIBUTE_USERNAME,
-                SNConnectorTestsUtils.USERNAME + uid.toString()));
-        userAttrs.add(AttributeBuilder.build(SNConnectorTestsUtils.RESOURCE_ATTRIBUTE_EMPLOYEE_NUMBER,
-                SNConnectorTestsUtils.VALUE_EMPLOYEE_NUMBER));
-        userAttrs.add(AttributeBuilder.build(SNConnectorTestsUtils.RESOURCE_ATTRIBUTE_LOCATION,
-                SNConnectorTestsUtils.VALUE_LOCATION));
-        userAttrs.add(AttributeBuilder.build(SNConnectorTestsUtils.RESOURCE_ATTRIBUTE_MANAGER,
-                SNConnectorTestsUtils.VALUE_MANAGER));
-        userAttrs.add(AttributeBuilder.build(SNConnectorTestsUtils.RESOURCE_ATTRIBUTE_CITY,
-                SNConnectorTestsUtils.VALUE_CITY));
+        userAttrs.add(AttributeBuilder.build(SNAttributes.USER_ATTRIBUTE_USERNAME, USERNAME + uid));
+        userAttrs.add(AttributeBuilder.build(RESOURCE_ATTRIBUTE_EMPLOYEE_NUMBER, VALUE_EMPLOYEE_NUMBER));
+        userAttrs.add(AttributeBuilder.build(RESOURCE_ATTRIBUTE_LOCATION, VALUE_LOCATION));
+        userAttrs.add(AttributeBuilder.build(RESOURCE_ATTRIBUTE_MANAGER, VALUE_MANAGER));
+        userAttrs.add(AttributeBuilder.build(RESOURCE_ATTRIBUTE_CITY, VALUE_CITY));
+        userAttrs.add(AttributeBuilder.build(PredefinedAttributes.GROUPS_NAME, Arrays.asList(grpUids)));
         userAttrs.add(password);
 
         Uid created = connector.create(ObjectClass.ACCOUNT, userAttrs, new OperationOptionsBuilder().build());
@@ -296,20 +395,31 @@ public class SNConnectorTests {
         return created;
     }
 
-    private Uid updateUser(final Uid created) {
-        Attribute password = AttributeBuilder.buildPassword(
-                new GuardedString((SNConnectorTestsUtils.PASSWORD_UPDATE).toCharArray()));
+    private static Uid createGroup(final UUID uid) {
+        Set<Attribute> grpAttrs = new HashSet<>();
+        grpAttrs.add(AttributeBuilder.build(SNAttributes.RESOURCE_ATTRIBUTE_NAME, GROUPNAME + uid.toString()));
+
+        Uid created = connector.create(ObjectClass.GROUP, grpAttrs, new OperationOptionsBuilder().build());
+        assertNotNull(created);
+        assertFalse(created.getUidValue().isEmpty());
+        LOG.info("Created Group uid: {0}", created);
+
+        return created;
+    }
+
+    private static Uid updateUser(final Uid created, final String... grpUids) {
+        Attribute password = AttributeBuilder.buildPassword(new GuardedString((PASSWORD_UPDATE).toCharArray()));
         // UPDATE USER PASSWORD
         Set<Attribute> userAttrs = new HashSet<>();
         userAttrs.add(password);
 
         // want to update another attribute
-        userAttrs.add(AttributeBuilder.build(SNConnectorTestsUtils.RESOURCE_ATTRIBUTE_EMPLOYEE_NUMBER,
-                SNConnectorTestsUtils.VALUE_EMPLOYEE_NUMBER_UPDATE));
+        userAttrs.add(AttributeBuilder.build(RESOURCE_ATTRIBUTE_EMPLOYEE_NUMBER, VALUE_EMPLOYEE_NUMBER_UPDATE));
 
         // want to clear an attribute
-        userAttrs.add(AttributeBuilder.build(SNConnectorTestsUtils.RESOURCE_ATTRIBUTE_CITY,
-                ""));
+        userAttrs.add(AttributeBuilder.build(RESOURCE_ATTRIBUTE_CITY, ""));
+        // groups to replace
+        userAttrs.add(AttributeBuilder.build(PredefinedAttributes.GROUPS_NAME, Arrays.asList(grpUids)));
 
         Uid updated = connector.update(
                 ObjectClass.ACCOUNT, created, userAttrs, new OperationOptionsBuilder().build());
@@ -320,13 +430,17 @@ public class SNConnectorTests {
         return updated;
     }
 
-    private Resource readUser(final String id, final SNClient client)
+    private static boolean hasAttribute(final Set<Attribute> attrs, final String name) {
+        return AttributeUtil.find(name, attrs) != null;
+    }
+
+    private static Resource readUser(final String id, final SNClient client)
             throws IllegalArgumentException, IllegalAccessException {
         Resource user = client.getResource(SNService.ResourceTable.sys_user, id);
         assertNotNull(user);
         assertNotNull(user.getSysId());
-        assertEquals(user.getLocation().getValue(), SNConnectorTestsUtils.VALUE_LOCATION);
-        assertEquals(user.getManager().getValue(), SNConnectorTestsUtils.VALUE_MANAGER);
+        assertEquals(user.getLocation().getValue(), VALUE_LOCATION);
+        assertEquals(user.getManager().getValue(), VALUE_MANAGER);
         assertNotNull(user.getEmployeeNumber());
         assertTrue(StringUtil.isBlank(user.getEmail()));
         LOG.info("Found User: {0}", user);
@@ -337,10 +451,10 @@ public class SNConnectorTests {
         assertTrue(hasAttribute(toAttributes, SNAttributes.RESOURCE_ATTRIBUTE_ID));
         assertTrue(hasAttribute(toAttributes, SNAttributes.USER_ATTRIBUTE_USERNAME));
         assertTrue(hasAttribute(toAttributes, SNAttributes.RESOURCE_ATTRIBUTE_NAME));
-        assertTrue(hasAttribute(toAttributes, SNConnectorTestsUtils.RESOURCE_ATTRIBUTE_EMPLOYEE_NUMBER));
-        assertTrue(hasAttribute(toAttributes, SNConnectorTestsUtils.RESOURCE_ATTRIBUTE_LOCATION));
-        assertTrue(hasAttribute(toAttributes, SNConnectorTestsUtils.RESOURCE_ATTRIBUTE_MANAGER));
-        assertTrue(hasAttribute(toAttributes, SNConnectorTestsUtils.RESOURCE_ATTRIBUTE_CITY));
+        assertTrue(hasAttribute(toAttributes, RESOURCE_ATTRIBUTE_EMPLOYEE_NUMBER));
+        assertTrue(hasAttribute(toAttributes, RESOURCE_ATTRIBUTE_LOCATION));
+        assertTrue(hasAttribute(toAttributes, RESOURCE_ATTRIBUTE_MANAGER));
+        assertTrue(hasAttribute(toAttributes, RESOURCE_ATTRIBUTE_CITY));
 
         // SEARCH BY USERNAME
         final List<ConnectorObject> found = new ArrayList<>();
@@ -385,41 +499,13 @@ public class SNConnectorTests {
         assertTrue(results.size() > 2);
     }
 
-    @Test
-    public void serviceTest() {
-        SNClient client = newClient();
-
-        String testUser = null;
-        String testGroup = null;
-        UUID uid = UUID.randomUUID();
-
-        try {
-            deleteUsersServiceTest(client);
-
-            Resource created = createUserServiceTest(uid, client);
-            testUser = created.getSysId();
-
-            readUserServiceTest(testUser, client);
-
-            readUsersServiceTest(client);
-            readGroupsServiceTest(client);
-
-            updateUserServiceTest(testUser, client);
-        } catch (Exception e) {
-            LOG.error(e, "While running test");
-            fail(e.getMessage());
-        } finally {
-            cleanup(client, testUser, testGroup);
-        }
-    }
-
-    private Resource createUserServiceTest(final UUID uid, final SNClient client) {
+    private static Resource createUserServiceTest(final UUID uid, final SNClient client) {
         Resource user = new Resource();
-        user.setUserName(SNConnectorTestsUtils.USERNAME + uid.toString());
-        user.setUserPassword(SNConnectorTestsUtils.PASSWORD);
+        user.setUserName(USERNAME + uid.toString());
+        user.setUserPassword(PASSWORD);
         user.setActive("true");
-        user.setCity(SNConnectorTestsUtils.VALUE_CITY);
-        user.setComments(SNConnectorTestsUtils.VALUE_COMMENT);
+        user.setCity(VALUE_CITY);
+        user.setComments(VALUE_COMMENT);
 
         Resource created = client.createResource(SNService.ResourceTable.sys_user, user);
         assertNotNull(created);
@@ -429,7 +515,7 @@ public class SNConnectorTests {
         return created;
     }
 
-    private Resource updateUserServiceTest(final String userId, final SNClient client) {
+    private static Resource updateUserServiceTest(final String userId, final SNClient client) {
         Resource user = client.getResource(SNService.ResourceTable.sys_user, userId);
         assertNotNull(user);
         assertFalse(user.getCity().isEmpty());
@@ -437,7 +523,7 @@ public class SNConnectorTests {
         String oldCity = user.getCity();
 
         // want to update an attribute
-        user.setCity(SNConnectorTestsUtils.VALUE_CITY_UPDATE);
+        user.setCity(VALUE_CITY_UPDATE);
 
         // want also to reset an attribute
         user.setComments(null);
@@ -445,7 +531,7 @@ public class SNConnectorTests {
         Resource updated = client.updateResource(SNService.ResourceTable.sys_user, user);
         assertNotNull(updated);
         assertFalse(updated.getCity().equals(oldCity));
-        assertEquals(updated.getCity(), SNConnectorTestsUtils.VALUE_CITY_UPDATE);
+        assertEquals(updated.getCity(), VALUE_CITY_UPDATE);
         assertNull(updated.getComments());
         LOG.info("Updated User: {0}", updated);
 
@@ -453,8 +539,7 @@ public class SNConnectorTests {
         return updated;
     }
 
-    private void readUsersServiceTest(final SNClient client)
-            throws IllegalArgumentException, IllegalAccessException {
+    private static void readUsersServiceTest(final SNClient client) {
         // GET USERS
         PagedResults<Resource> paged = client.getResources(SNService.ResourceTable.sys_user, 0, 1, false);
         assertNotNull(paged);
@@ -472,6 +557,7 @@ public class SNConnectorTests {
 
     private Resource readUserServiceTest(final String id, final SNClient client)
             throws IllegalArgumentException, IllegalAccessException {
+
         // GET USER
         Resource user = client.getResource(SNService.ResourceTable.sys_user, id);
         assertNotNull(user);
@@ -496,9 +582,9 @@ public class SNConnectorTests {
         return user;
     }
 
-    private void deleteUsersServiceTest(final SNClient client) {
+    private static void deleteUsersServiceTest(final SNClient client) {
         PagedResults<Resource> users = client.getResources(SNService.ResourceTable.sys_user,
-                SNAttributes.USER_ATTRIBUTE_USERNAME + "STARTSWITH" + SNConnectorTestsUtils.USERNAME, 0, 100, false);
+                SNAttributes.USER_ATTRIBUTE_USERNAME + "STARTSWITH" + USERNAME, 0, 100, false);
         assertNotNull(users);
         if (!users.getResult().isEmpty()) {
             for (Resource user : users.getResult()) {
@@ -507,8 +593,7 @@ public class SNConnectorTests {
         }
     }
 
-    private void readGroupsServiceTest(final SNClient client)
-            throws IllegalArgumentException, IllegalAccessException {
+    private static void readGroupsServiceTest(final SNClient client) {
         // GET GROUPS
         PagedResults<Resource> paged = client.getResources(SNService.ResourceTable.sys_user_group, 0, 1, false);
         assertNotNull(paged);
@@ -524,12 +609,30 @@ public class SNConnectorTests {
         LOG.info("Paged Groups next page: {0}", paged2);
     }
 
-    private boolean hasAttribute(final Set<Attribute> attrs, final String name) {
-        for (Attribute attr : attrs) {
-            if (attr.getName().equals(name)) {
-                return true;
-            }
+    @Test
+    public void serviceTest() {
+        SNClient client = newClient();
+
+        String testUser = null;
+        String testGroup = null;
+        UUID uid = UUID.randomUUID();
+        try {
+            deleteUsersServiceTest(client);
+
+            Resource created = createUserServiceTest(uid, client);
+            testUser = created.getSysId();
+
+            readUserServiceTest(testUser, client);
+
+            readUsersServiceTest(client);
+            readGroupsServiceTest(client);
+
+            updateUserServiceTest(testUser, client);
+        } catch (Exception e) {
+            LOG.error(e, "While running test");
+            fail(e.getMessage());
+        } finally {
+            cleanup(client, testUser, testGroup);
         }
-        return false;
     }
 }
