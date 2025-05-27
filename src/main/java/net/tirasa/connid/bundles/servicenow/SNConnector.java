@@ -72,6 +72,9 @@ import org.identityconnectors.framework.spi.operations.UpdateOp;
 public class SNConnector implements
         Connector, CreateOp, DeleteOp, SchemaOp, SearchOp<Filter>, TestOp, UpdateOp {
 
+    private static final List<Map<String, String>> DEFAULT_HTTP_HEADERS =
+            List.of(Map.of("name", "Content-Type", "value", "application/json"));
+
     private SNConnectorConfiguration configuration;
 
     private Schema schema;
@@ -87,8 +90,6 @@ public class SNConnector implements
 
     @Override
     public void init(Configuration configuration) {
-        LOG.ok("Init");
-
         this.configuration = (SNConnectorConfiguration) configuration;
         this.configuration.validate();
 
@@ -99,15 +100,11 @@ public class SNConnector implements
 
     @Override
     public void dispose() {
-        LOG.ok("Configuration cleanup");
-
         configuration = null;
     }
 
     @Override
     public void test() {
-        LOG.ok("Connector TEST");
-
         if (configuration != null) {
             if (client != null && client.testService()) {
                 LOG.ok("Test was successfull");
@@ -121,8 +118,6 @@ public class SNConnector implements
 
     @Override
     public Schema schema() {
-        LOG.ok("Building SCHEMA definition");
-
         if (schema == null) {
             schema = SNAttributes.buildSchema();
         }
@@ -144,8 +139,11 @@ public class SNConnector implements
     }
 
     @Override
-    public void executeQuery(ObjectClass objectClass, Filter query, ResultsHandler handler, OperationOptions options) {
-        LOG.ok("Connector READ");
+    public void executeQuery(
+            final ObjectClass objectClass,
+            final Filter query,
+            final ResultsHandler handler,
+            final OperationOptions options) {
 
         Attribute key = null;
         if (query instanceof EqualsFilter) {
@@ -168,7 +166,7 @@ public class SNConnector implements
             if (key == null) {
                 List<Resource> resources = null;
                 int remainingResults = -1;
-                int pagesSize = options.getPageSize() == null ? -1 : options.getPageSize();
+                int pagesSize = Optional.ofNullable(options.getPageSize()).orElse(-1);
                 String cookie = options.getPagedResultsCookie();
 
                 try {
@@ -179,7 +177,7 @@ public class SNConnector implements
                             resources = pagedResult.getResult();
 
                             cookie = resources.size() >= pagesSize
-                                    ? String.valueOf(Integer.valueOf(cookie) + resources.size())
+                                    ? String.valueOf(Integer.parseInt(cookie) + resources.size())
                                     : null;
                         } else {
                             PagedResults<Resource> pagedResult = client.getResources(type, 0, pagesSize, false);
@@ -286,7 +284,7 @@ public class SNConnector implements
             } catch (Exception e) {
                 SNUtils.wrapGeneralError("Could not create Resource : " + username, e);
             }
-            
+
             // also manage memberships
             BatchRequest batchRequest = new BatchRequest(UUID.randomUUID().toString());
             AtomicInteger counter = new AtomicInteger(1);
@@ -295,11 +293,11 @@ public class SNConnector implements
                         groupsAttr.getValue().forEach(group -> {
                             try {
                                 batchRequest.getRequests().add(new BatchOperation.Builder().id(
-                                                String.valueOf(counter.getAndIncrement()))
+                                        String.valueOf(counter.getAndIncrement()))
                                         .url("/api/now/table/" + SNService.ResourceTable.sys_user_grmember.name())
-                                        .headers(List.of(Map.of("name","Content-Type", "value", "application/json")))
+                                        .headers(DEFAULT_HTTP_HEADERS)
                                         .method(HttpMethod.POST).body(Map.of("user", resource.getSysId(), "group",
-                                                                        group.toString())).build());
+                                        group.toString())).build());
                             } catch (Exception e) {
                                 SNUtils.wrapGeneralError("Could not create user-group memberships : " + username, e);
                             }
@@ -413,7 +411,7 @@ public class SNConnector implements
             // also manage memberships
             BatchRequest batchRequest = new BatchRequest(UUID.randomUUID().toString());
             AtomicInteger counter = new AtomicInteger(1);
-            
+
             // 1. remove current memberships
             client.getMembershipResources(SNService.ResourceTable.sys_user_grmember, "user=" + resource.getSysId())
                     .getResult().forEach(memb -> {
@@ -423,8 +421,7 @@ public class SNConnector implements
                                             .id(String.valueOf(counter.getAndIncrement()))
                                             .url("/api/now/table/" + SNService.ResourceTable.sys_user_grmember.name()
                                                     + "/" + memb.getSysId())
-                                            .headers(List.of(Map.of("name","Content-Type", "value",
-                                                    "application/json")))
+                                            .headers(DEFAULT_HTTP_HEADERS)
                                             .method(HttpMethod.DELETE)
                                             .build());
                         } catch (Exception e) {
@@ -439,7 +436,7 @@ public class SNConnector implements
                                 batchRequest.getRequests().add(new BatchOperation.Builder()
                                         .id(String.valueOf(counter.getAndIncrement()))
                                         .url("/api/now/table/" + SNService.ResourceTable.sys_user_grmember.name())
-                                        .headers(List.of(Map.of("name","Content-Type", "value", "application/json")))
+                                        .headers(DEFAULT_HTTP_HEADERS)
                                         .method(HttpMethod.POST)
                                         .body(Map.of("user", resource.getSysId(), "group", group.toString()))
                                         .build());
@@ -453,7 +450,7 @@ public class SNConnector implements
             if (!batchRequest.getRequests().isEmpty()) {
                 client.executeBatch(batchRequest);
             }
-            
+
             return returnUid;
 
         } else {
@@ -492,19 +489,19 @@ public class SNConnector implements
         }
 
         // retrieve also memberships
-        if (ObjectClass.ACCOUNT.equals(objectClass) && attributesToGet.contains(
-                SNAttributes.USER_ATTRIBUTE_MEMBEROF)) {
-            builder.addAttribute(AttributeBuilder.build(SNAttributes.USER_ATTRIBUTE_MEMBEROF,
+        if (ObjectClass.ACCOUNT.equals(objectClass) && attributesToGet.contains(SNAttributes.USER_ATTRIBUTE_MEMBEROF)) {
+            builder.addAttribute(AttributeBuilder.build(
+                    SNAttributes.USER_ATTRIBUTE_MEMBEROF,
                     client.getMembershipResources(SNService.ResourceTable.sys_user_grmember,
-                                    "user=" + resource.getSysId()).getResult().stream()
+                            "user=" + resource.getSysId()).getResult().stream()
                             .map(mr -> mr.getGroup().getValue())
                             .collect(Collectors.toList())));
         }
-        
+
         return builder.build();
     }
 
-    private SNService.ResourceTable setResourceType(final ObjectClass objectClass) {
+    private static SNService.ResourceTable setResourceType(final ObjectClass objectClass) {
         SNService.ResourceTable type = null;
         if (ObjectClass.ACCOUNT.equals(objectClass)) {
             type = SNService.ResourceTable.sys_user;
@@ -513,5 +510,4 @@ public class SNConnector implements
         }
         return type;
     }
-
 }

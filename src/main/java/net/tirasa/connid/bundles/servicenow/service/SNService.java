@@ -24,7 +24,6 @@ import java.util.Map.Entry;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import net.tirasa.connid.bundles.servicenow.SNConnectorConfiguration;
-import net.tirasa.connid.bundles.servicenow.dto.BatchRequest;
 import net.tirasa.connid.bundles.servicenow.dto.Resource;
 import net.tirasa.connid.bundles.servicenow.utils.SNAttributes;
 import net.tirasa.connid.bundles.servicenow.utils.SNUtils;
@@ -40,11 +39,11 @@ public class SNService {
     protected final SNConnectorConfiguration config;
 
     public final static String RESPONSE_RESULT = "result";
-    
+
     public final static String RESPONSE_BATCH_REQUEST_ID = "batch_request_id";
-    
+
     public final static String RESPONSE_SERVICED_REQUESTS = "serviced_requests";
-    
+
     public final static String BATCH_OP = "batch";
 
     public final static String RESPONSE_HEADER_TOTAL_COUNT = "x-total-count";
@@ -53,6 +52,7 @@ public class SNService {
         sys_user,
         sys_user_group,
         sys_user_grmember
+
     }
 
     public SNService(final SNConnectorConfiguration config) {
@@ -174,28 +174,6 @@ public class SNService {
         return resource;
     }
 
-    protected void doExecuteBatch(final BatchRequest request, final WebClient webClient) {
-        LOG.ok("BATCH: {0}", webClient.getCurrentURI());
-        String payload = null;
-
-        try {
-            payload = SNUtils.MAPPER.writeValueAsString(request);
-            Response response = webClient.post(payload);
-            String responseAsString = checkServiceErrors(response);
-
-            JsonNode result = SNUtils.MAPPER.readTree(responseAsString);
-            if (result.hasNonNull(RESPONSE_BATCH_REQUEST_ID) && result.hasNonNull(RESPONSE_SERVICED_REQUESTS)) {
-                LOG.ok("Batch request successfully executed {0}: ", responseAsString);
-            } else {
-                LOG.error("Batch request error with payload {0}: ", payload);
-                SNUtils.handleGeneralError("While executing batch request - Response: " + responseAsString);
-            }
-        } catch (IOException ex) {
-            LOG.error("BATCH payload {0}: ", payload);
-            SNUtils.handleGeneralError("While creating Resource", ex);
-        }
-    }
-
     protected JsonNode doUpdate(final Resource resource, final WebClient webClient) {
         LOG.ok("UPDATE: {0}", webClient.getCurrentURI());
         JsonNode result = null;
@@ -231,7 +209,7 @@ public class SNService {
         }
     }
 
-    private String checkServiceErrors(final Response response) {
+    protected String checkServiceErrors(final Response response) {
         if (response == null) {
             SNUtils.handleGeneralError("While executing request - no response");
         }

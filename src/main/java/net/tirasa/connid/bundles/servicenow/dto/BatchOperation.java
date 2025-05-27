@@ -27,6 +27,8 @@ import org.identityconnectors.framework.common.exceptions.ConnectorException;
 
 public class BatchOperation implements Serializable {
 
+    private static final long serialVersionUID = -3701841336691292180L;
+
     @JsonProperty("id")
     private String id;
 
@@ -44,39 +46,26 @@ public class BatchOperation implements Serializable {
 
     public static class Builder {
 
-        protected BatchOperation instance;
+        private BatchOperation instance;
 
-        private String id;
-        private String method;
-        private String url;
-        private Map<String, String> headers;
-        private String body;
-
-        public Builder() {
-        }
-
-        protected BatchOperation newInstance() {
-            return new BatchOperation();
-        }
-
-        protected final BatchOperation getInstance() {
+        private final BatchOperation getInstance() {
             if (instance == null) {
-                instance = newInstance();
+                instance = new BatchOperation();
             }
             return instance;
         }
 
-        public Builder id(String id) {
+        public Builder id(final String id) {
             getInstance().setId(id);
             return this;
         }
 
-        public Builder method(String method) {
+        public Builder method(final String method) {
             getInstance().setMethod(method);
             return this;
         }
 
-        public Builder url(String relativeUrl) {
+        public Builder url(final String relativeUrl) {
             getInstance().setUrl(relativeUrl);
             return this;
         }
@@ -86,7 +75,7 @@ public class BatchOperation implements Serializable {
             return this;
         }
 
-        public Builder body(Object body) {
+        public Builder body(final Object body) {
             getInstance().setBody(body);
             return this;
         }
@@ -138,8 +127,8 @@ public class BatchOperation implements Serializable {
 
     public void setBody(final Object body) {
         try {
-            this.body = Base64.getEncoder()
-                    .encodeToString(SNUtils.MAPPER.writeValueAsString(body).getBytes(StandardCharsets.UTF_8));
+            this.body = Base64.getEncoder().encodeToString(
+                    SNUtils.MAPPER.writeValueAsString(body).getBytes(StandardCharsets.UTF_8));
         } catch (JsonProcessingException e) {
             throw new ConnectorException(e);
         }
@@ -147,8 +136,11 @@ public class BatchOperation implements Serializable {
 
     @Override
     public String toString() {
-        return "BatchOperation{" + "method='" + method + '\'' + ", relativeUrl='" + url + '\'' + ", headers=" + headers
-                + ", body=" + body + '}';
+        return "BatchOperation{"
+                + "method='" + method + '\''
+                + ", relativeUrl='" + url
+                + '\'' + ", headers=" + headers
+                + ", body=" + body
+                + '}';
     }
-
 }
