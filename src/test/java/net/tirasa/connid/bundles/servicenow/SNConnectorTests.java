@@ -55,6 +55,7 @@ import org.identityconnectors.framework.common.objects.Name;
 import org.identityconnectors.framework.common.objects.ObjectClass;
 import org.identityconnectors.framework.common.objects.ObjectClassInfo;
 import org.identityconnectors.framework.common.objects.OperationOptionsBuilder;
+import org.identityconnectors.framework.common.objects.PredefinedAttributes;
 import org.identityconnectors.framework.common.objects.ResultsHandler;
 import org.identityconnectors.framework.common.objects.Schema;
 import org.identityconnectors.framework.common.objects.SearchResult;
@@ -329,14 +330,14 @@ public class SNConnectorTests {
                     new EqualsFilter(new Uid(createdUser.getSysId())),
                     found::add, new OperationOptionsBuilder().setAttributesToGet(
                             SNAttributes.USER_ATTRIBUTE_USERNAME,
-                            SNAttributes.USER_ATTRIBUTE_MEMBEROF).build());
+                            PredefinedAttributes.GROUPS_NAME).build());
             assertEquals(found.size(), 1);
             assertNotNull(found.get(0));
             assertNotNull(found.get(0).getName());
-            assertNotNull(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF));
-            assertNotNull(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF).getValue());
-            assertFalse(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF).getValue().isEmpty());
-            assertTrue(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF).getValue()
+            assertNotNull(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME));
+            assertNotNull(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME).getValue());
+            assertFalse(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME).getValue().isEmpty());
+            assertTrue(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME).getValue()
                     .contains(createdGroup01.getUidValue()));
 
             Uid updated = updateUser(created, createdGroup02.getUidValue(), createdGroup03.getUidValue());
@@ -353,18 +354,18 @@ public class SNConnectorTests {
             connector.search(ObjectClass.ACCOUNT,
                     new EqualsFilter(new Uid(createdUser.getSysId())),
                     found::add, new OperationOptionsBuilder().setAttributesToGet(SNAttributes.USER_ATTRIBUTE_USERNAME,
-                            SNAttributes.USER_ATTRIBUTE_MEMBEROF).build());
+                            PredefinedAttributes.GROUPS_NAME).build());
             assertEquals(found.size(), 1);
             assertNotNull(found.get(0));
             assertNotNull(found.get(0).getName());
-            assertNotNull(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF));
-            assertNotNull(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF).getValue());
-            assertFalse(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF).getValue().isEmpty());
-            assertFalse(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF).getValue()
+            assertNotNull(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME));
+            assertNotNull(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME).getValue());
+            assertFalse(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME).getValue().isEmpty());
+            assertFalse(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME).getValue()
                     .contains(createdGroup01.getUidValue()));
-            assertTrue(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF).getValue()
+            assertTrue(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME).getValue()
                     .contains(createdGroup02.getUidValue()));
-            assertTrue(found.get(0).getAttributeByName(SNAttributes.USER_ATTRIBUTE_MEMBEROF).getValue()
+            assertTrue(found.get(0).getAttributeByName(PredefinedAttributes.GROUPS_NAME).getValue()
                     .contains(createdGroup03.getUidValue()));
         } catch (Exception e) {
             LOG.error(e, "While running test");
@@ -383,7 +384,7 @@ public class SNConnectorTests {
         userAttrs.add(AttributeBuilder.build(RESOURCE_ATTRIBUTE_LOCATION, VALUE_LOCATION));
         userAttrs.add(AttributeBuilder.build(RESOURCE_ATTRIBUTE_MANAGER, VALUE_MANAGER));
         userAttrs.add(AttributeBuilder.build(RESOURCE_ATTRIBUTE_CITY, VALUE_CITY));
-        userAttrs.add(AttributeBuilder.build(SNAttributes.USER_ATTRIBUTE_MEMBEROF, Arrays.asList(grpUids)));
+        userAttrs.add(AttributeBuilder.build(PredefinedAttributes.GROUPS_NAME, Arrays.asList(grpUids)));
         userAttrs.add(password);
 
         Uid created = connector.create(ObjectClass.ACCOUNT, userAttrs, new OperationOptionsBuilder().build());
@@ -418,7 +419,7 @@ public class SNConnectorTests {
         // want to clear an attribute
         userAttrs.add(AttributeBuilder.build(RESOURCE_ATTRIBUTE_CITY, ""));
         // groups to replace
-        userAttrs.add(AttributeBuilder.build(SNAttributes.USER_ATTRIBUTE_MEMBEROF, Arrays.asList(grpUids)));
+        userAttrs.add(AttributeBuilder.build(PredefinedAttributes.GROUPS_NAME, Arrays.asList(grpUids)));
 
         Uid updated = connector.update(
                 ObjectClass.ACCOUNT, created, userAttrs, new OperationOptionsBuilder().build());

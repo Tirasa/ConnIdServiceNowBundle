@@ -29,6 +29,7 @@ import net.tirasa.connid.bundles.servicenow.utils.SNUtils;
 import org.identityconnectors.common.CollectionUtil;
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.framework.common.objects.Attribute;
+import org.identityconnectors.framework.common.objects.PredefinedAttributes;
 
 public class Resource implements BaseEntity {
 
@@ -1479,7 +1480,7 @@ public class Resource implements BaseEntity {
                 List<Object> values = attribute.getValue();
                 String localName = attribute.getName();
 
-                if (localName.contains("__") || localName.equalsIgnoreCase(SNAttributes.USER_ATTRIBUTE_MEMBEROF)) {
+                if (localName.contains("__")) {
                     LOG.ok("Skipping attribute {0}, while building Resource object", localName);
                     continue;
                 }

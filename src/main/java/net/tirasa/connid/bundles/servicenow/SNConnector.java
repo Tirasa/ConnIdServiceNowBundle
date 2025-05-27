@@ -49,6 +49,7 @@ import org.identityconnectors.framework.common.objects.Name;
 import org.identityconnectors.framework.common.objects.ObjectClass;
 import org.identityconnectors.framework.common.objects.OperationOptions;
 import org.identityconnectors.framework.common.objects.OperationalAttributes;
+import org.identityconnectors.framework.common.objects.PredefinedAttributes;
 import org.identityconnectors.framework.common.objects.ResultsHandler;
 import org.identityconnectors.framework.common.objects.Schema;
 import org.identityconnectors.framework.common.objects.SearchResult;
@@ -288,7 +289,7 @@ public class SNConnector implements
             // also manage memberships
             BatchRequest batchRequest = new BatchRequest(UUID.randomUUID().toString());
             AtomicInteger counter = new AtomicInteger(1);
-            Optional.ofNullable(AttributeUtil.find(SNAttributes.USER_ATTRIBUTE_MEMBEROF, createAttributes))
+            Optional.ofNullable(AttributeUtil.find(PredefinedAttributes.GROUPS_NAME, createAttributes))
                     .ifPresent(groupsAttr -> {
                         groupsAttr.getValue().forEach(group -> {
                             try {
@@ -429,7 +430,7 @@ public class SNConnector implements
                         }
                     });
             // 2. add the new ones
-            Optional.ofNullable(AttributeUtil.find(SNAttributes.USER_ATTRIBUTE_MEMBEROF, replaceAttributes))
+            Optional.ofNullable(AttributeUtil.find(PredefinedAttributes.GROUPS_NAME, replaceAttributes))
                     .ifPresent(groupsAttr -> {
                         groupsAttr.getValue().forEach(group -> {
                             try {
@@ -489,9 +490,9 @@ public class SNConnector implements
         }
 
         // retrieve also memberships
-        if (ObjectClass.ACCOUNT.equals(objectClass) && attributesToGet.contains(SNAttributes.USER_ATTRIBUTE_MEMBEROF)) {
+        if (ObjectClass.ACCOUNT.equals(objectClass) && attributesToGet.contains(PredefinedAttributes.GROUPS_NAME)) {
             builder.addAttribute(AttributeBuilder.build(
-                    SNAttributes.USER_ATTRIBUTE_MEMBEROF,
+                    PredefinedAttributes.GROUPS_NAME,
                     client.getMembershipResources(SNService.ResourceTable.sys_user_grmember,
                             "user=" + resource.getSysId()).getResult().stream()
                             .map(mr -> mr.getGroup().getValue())
