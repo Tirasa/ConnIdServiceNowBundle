@@ -20,18 +20,18 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 public class SNComplex {
 
+    @JsonProperty("link")
+    protected String link;
+
+    @JsonProperty("value")
+    protected String value;
+
     public SNComplex() {
     }
 
     public SNComplex(final String value) {
         this.value = value;
     }
-
-    @JsonProperty("link")
-    protected String link;
-
-    @JsonProperty("value")
-    protected String value;
 
     public String getLink() {
         return link;
@@ -54,5 +54,4 @@ public class SNComplex {
     public String toString() {
         return value;
     }
-
 }
