@@ -33,7 +33,7 @@ public class SNComplexDeserializer extends JsonDeserializer<SNComplex> {
     private static final Log LOG = Log.getLog(BaseEntity.class);
 
     @Override
-    public SNComplex deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+    public SNComplex deserialize(final JsonParser p, final DeserializationContext ctxt) throws IOException {
         SNComplex ldapServer = null;
 
         JsonToken currentToken = p.getCurrentToken();
