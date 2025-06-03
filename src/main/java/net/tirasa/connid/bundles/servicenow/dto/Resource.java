@@ -371,45 +371,58 @@ public class Resource implements BaseEntity {
     @JsonProperty("time_zone")
     private String timeZone;
 
+    @JsonDeserialize(using = SNComplexDeserializer.class)
     @JsonProperty("schedule")
     private SNComplex schedule;
 
     @JsonProperty("date_format")
     private String dateFormat;
 
+    @JsonDeserialize(using = SNComplexDeserializer.class)
     @JsonProperty("manager")
     private SNComplex manager;
 
+    @JsonDeserialize(using = SNComplexDeserializer.class)
     @JsonProperty("department")
     private SNComplex department;
 
+    @JsonDeserialize(using = SNComplexDeserializer.class)
     @JsonProperty("cost_center")
     private SNComplex costCenter;
 
+    @JsonDeserialize(using = SNComplexDeserializer.class)
     @JsonProperty("opened_by")
     private SNComplex openedBy;
 
+    @JsonDeserialize(using = SNComplexDeserializer.class)
     @JsonProperty("sys_domain")
     private SNComplex sysDomain;
 
+    @JsonDeserialize(using = SNComplexDeserializer.class)
     @JsonProperty("caller_id")
     private SNComplex callerId;
 
+    @JsonDeserialize(using = SNComplexDeserializer.class)
     @JsonProperty("location")
     private SNComplex location;
 
+    @JsonDeserialize(using = SNComplexDeserializer.class)
     @JsonProperty("company")
     private SNComplex company;
 
+    @JsonDeserialize(using = SNComplexDeserializer.class)
     @JsonProperty("assignment_group")
     private SNComplex assignmentGroup;
 
+    @JsonDeserialize(using = SNComplexDeserializer.class)
     @JsonProperty("cmdb_ci")
     private SNComplex cmdbCi;
 
+    @JsonDeserialize(using = SNComplexDeserializer.class)
     @JsonProperty("default_perspective")
     private SNComplex defaultPerspective;
 
+    @JsonDeserialize(using = SNComplexDeserializer.class)
     @JsonProperty("parent")
     private SNComplex parent;
 
