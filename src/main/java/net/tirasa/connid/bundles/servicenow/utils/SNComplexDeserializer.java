@@ -39,7 +39,7 @@ public class SNComplexDeserializer extends JsonDeserializer<SNComplex> {
         JsonToken currentToken = p.getCurrentToken();
 
         if (currentToken == JsonToken.VALUE_STRING) {
-            LOG.ok("LDAP server is a string value {0}. Returning null.", p.getText());
+            LOG.ok("Complex object is represented as a string value {0}. Returning null.", p.getText());
         } else if (currentToken == JsonToken.START_OBJECT) {
             JsonNode node = p.getCodec().readTree(p);
             ldapServer = new SNComplex();
