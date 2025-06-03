@@ -17,6 +17,7 @@ package net.tirasa.connid.bundles.servicenow.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.HashMap;
@@ -24,12 +25,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import net.tirasa.connid.bundles.servicenow.utils.SNComplexDeserializer;
 import net.tirasa.connid.bundles.servicenow.utils.SNAttributes;
 import net.tirasa.connid.bundles.servicenow.utils.SNUtils;
 import org.identityconnectors.common.CollectionUtil;
 import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.framework.common.objects.Attribute;
-import org.identityconnectors.framework.common.objects.PredefinedAttributes;
 
 public class Resource implements BaseEntity {
 
@@ -333,8 +334,9 @@ public class Resource implements BaseEntity {
     @JsonProperty("internal_integration_user")
     private String internalIntegrationUser;
 
+    @JsonDeserialize(using = SNComplexDeserializer.class)
     @JsonProperty("ldap_server")
-    private String ldapServer;
+    private SNComplex ldapServer;
 
     @JsonProperty("mobile_phone")
     private String mobilePhone;
@@ -1206,11 +1208,11 @@ public class Resource implements BaseEntity {
         this.internalIntegrationUser = internalIntegrationUser;
     }
 
-    public String getLdapServer() {
+    public SNComplex getLdapServer() {
         return ldapServer;
     }
 
-    public void setLdapServer(final String ldapServer) {
+    public void setLdapServer(final SNComplex ldapServer) {
         this.ldapServer = ldapServer;
     }
 
@@ -1461,6 +1463,9 @@ public class Resource implements BaseEntity {
                         case "parent":
                             value = SNComplex.class.cast(value).getValue();
                             break;
+                        case "ldap_server":
+                            value = SNComplex.class.cast(value).getValue();
+                            break;
                     }
                 }
                 attrs.add(SNAttributes.buildAttributeFromClassField(field,
@@ -1474,7 +1479,7 @@ public class Resource implements BaseEntity {
 
     @JsonIgnore
     @Override
-    public void fromAttributes(final Set<Attribute> attributes) {
+    public void fromAttributes(final Set<Attribute> attributes, final String baseAddress) {
         for (Attribute attribute : attributes) {
             if (!CollectionUtil.isEmpty(attribute.getValue())) {
                 List<Object> values = attribute.getValue();
@@ -1526,6 +1531,10 @@ public class Resource implements BaseEntity {
                             break;
                         case "parent":
                             parent = new SNComplex(String.class.cast(values.get(0)));
+                            break;
+                        case "ldapServer":
+                            ldapServer = new SNComplex((String) values.get(0));
+                            ldapServer.setLink(baseAddress + "api/now/table/ldap_server_config/" + values.get(0));
                             break;
                         default:
                             field.set(this, values.get(0) instanceof String ? String.class.cast(values.get(0))

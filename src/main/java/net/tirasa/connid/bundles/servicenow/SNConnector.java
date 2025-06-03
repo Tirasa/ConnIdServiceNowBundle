@@ -54,7 +54,9 @@ import org.identityconnectors.framework.common.objects.ResultsHandler;
 import org.identityconnectors.framework.common.objects.Schema;
 import org.identityconnectors.framework.common.objects.SearchResult;
 import org.identityconnectors.framework.common.objects.Uid;
+import org.identityconnectors.framework.common.objects.filter.AttributeFilter;
 import org.identityconnectors.framework.common.objects.filter.EqualsFilter;
+import org.identityconnectors.framework.common.objects.filter.EqualsIgnoreCaseFilter;
 import org.identityconnectors.framework.common.objects.filter.Filter;
 import org.identityconnectors.framework.common.objects.filter.FilterTranslator;
 import org.identityconnectors.framework.spi.Configuration;
@@ -147,13 +149,8 @@ public class SNConnector implements
             final OperationOptions options) {
 
         Attribute key = null;
-        if (query instanceof EqualsFilter) {
-            Attribute filterAttr = ((EqualsFilter) query).getAttribute();
-            if (filterAttr instanceof Uid) {
-                key = filterAttr;
-            } else if (ObjectClass.ACCOUNT.equals(objectClass) || ObjectClass.GROUP.equals(objectClass)) {
-                key = filterAttr;
-            }
+        if (query instanceof EqualsFilter || query instanceof EqualsIgnoreCaseFilter) {
+            key = ((AttributeFilter) query).getAttribute();
         }
 
         Set<String> attributesToGet = new HashSet<>();
@@ -279,7 +276,7 @@ public class SNConnector implements
                     resource.setActive(status.getValue().get(0).toString());
                 }
 
-                resource.fromAttributes(createAttributes);
+                resource.fromAttributes(createAttributes, configuration.getBaseAddress());
 
                 client.createResource(type, resource);
             } catch (Exception e) {
@@ -388,7 +385,7 @@ public class SNConnector implements
             }
 
             try {
-                resource.fromAttributes(replaceAttributes);
+                resource.fromAttributes(replaceAttributes, configuration.getBaseAddress());
 
                 // password
                 GuardedString password = accessor.getPassword() != null
