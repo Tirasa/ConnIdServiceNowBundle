@@ -17,8 +17,17 @@ package net.tirasa.connid.bundles.servicenow.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import net.tirasa.connid.bundles.servicenow.utils.SNComplexDeserializer;
 
+@JsonDeserialize(using = SNComplexDeserializer.class)
 public class SNComplex {
+
+    @JsonProperty("link")
+    protected String link;
+
+    @JsonProperty("value")
+    protected String value;
 
     public SNComplex() {
     }
@@ -26,12 +35,6 @@ public class SNComplex {
     public SNComplex(final String value) {
         this.value = value;
     }
-
-    @JsonProperty("link")
-    protected String link;
-
-    @JsonProperty("value")
-    protected String value;
 
     public String getLink() {
         return link;
@@ -54,5 +57,4 @@ public class SNComplex {
     public String toString() {
         return value;
     }
-
 }

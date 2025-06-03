@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.UUID;
 import net.tirasa.connid.bundles.servicenow.dto.PagedResults;
 import net.tirasa.connid.bundles.servicenow.dto.Resource;
+import net.tirasa.connid.bundles.servicenow.dto.SNComplex;
 import net.tirasa.connid.bundles.servicenow.service.NoSuchEntityException;
 import net.tirasa.connid.bundles.servicenow.service.SNClient;
 import net.tirasa.connid.bundles.servicenow.service.SNService;
@@ -384,6 +385,7 @@ public class SNConnectorTests {
         userAttrs.add(AttributeBuilder.build(RESOURCE_ATTRIBUTE_LOCATION, VALUE_LOCATION));
         userAttrs.add(AttributeBuilder.build(RESOURCE_ATTRIBUTE_MANAGER, VALUE_MANAGER));
         userAttrs.add(AttributeBuilder.build(RESOURCE_ATTRIBUTE_CITY, VALUE_CITY));
+        userAttrs.add(AttributeBuilder.build(SNAttributes.RESOURCE_ATTRIBUTE_LDAP_SERVER, "dev LDAP"));
         userAttrs.add(AttributeBuilder.build(PredefinedAttributes.GROUPS_NAME, Arrays.asList(grpUids)));
         userAttrs.add(password);
 
@@ -442,6 +444,10 @@ public class SNConnectorTests {
         assertEquals(user.getLocation().getValue(), VALUE_LOCATION);
         assertEquals(user.getManager().getValue(), VALUE_MANAGER);
         assertNotNull(user.getEmployeeNumber());
+        assertNotNull(user.getLdapServer());
+        assertEquals(CONF.getBaseAddress() + "api/now/table/ldap_server_config/dev LDAP",
+                user.getLdapServer().getLink());
+        assertEquals("dev LDAP", user.getLdapServer().getValue());
         assertTrue(StringUtil.isBlank(user.getEmail()));
         LOG.info("Found User: {0}", user);
 
@@ -506,6 +512,9 @@ public class SNConnectorTests {
         user.setActive("true");
         user.setCity(VALUE_CITY);
         user.setComments(VALUE_COMMENT);
+        SNComplex ldapServer = new SNComplex("dev LDAP");
+        ldapServer.setLink(CONF.getBaseAddress() + "api/now/table/ldap_server_config/dev LDAP");
+        user.setLdapServer(ldapServer);
 
         Resource created = client.createResource(SNService.ResourceTable.sys_user, user);
         assertNotNull(created);
@@ -562,6 +571,10 @@ public class SNConnectorTests {
         Resource user = client.getResource(SNService.ResourceTable.sys_user, id);
         assertNotNull(user);
         assertNotNull(user.getSysId());
+        assertNotNull(user.getLdapServer());
+        assertEquals(CONF.getBaseAddress() + "api/now/table/ldap_server_config/dev LDAP",
+                user.getLdapServer().getLink());
+        assertEquals("dev LDAP", user.getLdapServer().getValue());
         LOG.info("Found User: {0}", user);
 
         // USER TO ATTRIBUTES
@@ -570,6 +583,7 @@ public class SNConnectorTests {
         assertTrue(hasAttribute(toAttributes, SNAttributes.RESOURCE_ATTRIBUTE_ID));
         assertTrue(hasAttribute(toAttributes, SNAttributes.USER_ATTRIBUTE_USERNAME));
         assertTrue(hasAttribute(toAttributes, SNAttributes.RESOURCE_ATTRIBUTE_NAME));
+        assertTrue(hasAttribute(toAttributes, SNAttributes.RESOURCE_ATTRIBUTE_LDAP_SERVER));
 
         // GET USER by userName
         List<Resource> users = client.getResources(SNService.ResourceTable.sys_user,

@@ -22,9 +22,9 @@ public interface BaseEntity {
 
     String getSysId();
 
-    void setSysId(final String sys_id);
+    void setSysId(String sys_id);
 
     Set<Attribute> toAttributes() throws IllegalArgumentException, IllegalAccessException;
 
-    void fromAttributes(final Set<Attribute> attributes);
+    void fromAttributes(Set<Attribute> attributes, String baseAddress);
 }
