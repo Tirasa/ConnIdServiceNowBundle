@@ -31,7 +31,7 @@ public class SNUtils {
 
     public final static ObjectMapper MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-            .setSerializationInclusion(JsonInclude.Include.NON_NULL); // can send "" values
+            .setDefaultPropertyInclusion(JsonInclude.Include.NON_NULL); // can send "" values
 
     public static GuardedString createProtectedPassword(final String password) {
         GuardedString guardedString = new GuardedString(password.toCharArray());
